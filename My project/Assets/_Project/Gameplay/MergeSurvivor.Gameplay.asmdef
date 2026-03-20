@@ -1,0 +1,20 @@
+{
+  "name": "MergeSurvivor.Gameplay",
+  "rootNamespace": "MergeSurvivor.Gameplay",
+  "references": [
+    "MergeSurvivor.Core",
+    "MergeSurvivor.Data",
+    "MergeSurvivor.Economy",
+    "MergeSurvivor.Meta",
+    "MergeSurvivor.Platform"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

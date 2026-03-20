@@ -1,0 +1,34 @@
+# Android / IL2CPP build artifacts (do not version)
+Mergefall_BackUpThisFolder_ButDontShipItWithYourGame/
+Mergefall_BurstDebugInformation_DoNotShip/
+
+# Unity generated folders
+/Library/
+/Temp/
+/Obj/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
+/Build/
+/Builds/
+
+# IDE / tooling
+/.vs/
+/.idea/
+/.vscode/
+*.csproj
+*.sln
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# OS noise
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,17 @@
+{
+  "name": "MergeSurvivor.Economy",
+  "rootNamespace": "MergeSurvivor.Economy",
+  "references": [
+    "MergeSurvivor.Core",
+    "MergeSurvivor.Data"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

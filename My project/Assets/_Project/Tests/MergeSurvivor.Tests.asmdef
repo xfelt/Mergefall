@@ -1,0 +1,26 @@
+{
+  "name": "MergeSurvivor.Tests",
+  "rootNamespace": "MergeSurvivor.Tests",
+  "references": [
+    "MergeSurvivor.Core",
+    "MergeSurvivor.Data",
+    "MergeSurvivor.Gameplay",
+    "MergeSurvivor.Economy",
+    "MergeSurvivor.Meta",
+    "MergeSurvivor.Platform",
+    "MergeSurvivor.UI",
+    "Unity.TextMeshPro"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

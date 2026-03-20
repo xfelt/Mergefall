@@ -1,0 +1,74 @@
+// Optional: enable Google Play Billing by adding com.unity.purchasing (e.g. Edit > Project Settings > Services),
+// adding "UnityEngine.Purchasing" to MergeSurvivor.Platform.asmdef, and renaming this file to StoreServiceGooglePlay.cs.
+// Unity 6 uses IAP 5.x; you may need to update this implementation to the 5.x API.
+using System;
+using UnityEngine;
+using UnityEngine.Purchasing;
+using UnityEngine.Purchasing.Extension;
+
+namespace MergeSurvivor.Platform
+{
+    /// <summary>Google Play Billing via Unity IAP. Product IDs and config from AppPlatformConfig (e.g. BillingProductPremiumPack).</summary>
+    public sealed class StoreServiceGooglePlay : IStoreService, IStoreListener
+    {
+        private IStoreController _controller;
+        private IExtensionProvider _extensions;
+        private readonly AppPlatformConfig _config;
+
+        public StoreServiceGooglePlay(AppPlatformConfig config)
+        {
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+        }
+
+        public void Initialize()
+        {
+            if (_controller != null) return;
+            var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
+            builder.AddProduct(_config.BillingProductPremiumPack, ProductType.Consumable);
+            UnityPurchasing.Initialize(this, builder);
+        }
+
+        public void Purchase(string productId)
+        {
+            if (_controller == null)
+            {
+                Debug.LogWarning("[Store] Not initialized yet.");
+                return;
+            }
+            var product = _controller.products.WithID(productId);
+            if (product != null && product.availableToPurchase)
+                _controller.InitiatePurchase(product);
+            else
+                Debug.LogWarning($"[Store] Product not available: {productId}");
+        }
+
+        public void OnInitialized(IStoreController controller, IExtensionProvider extensions)
+        {
+            _controller = controller;
+            _extensions = extensions;
+            Debug.Log("[Store] Google Play Billing initialized.");
+        }
+
+        public void OnInitializeFailed(InitializationFailureReason error)
+        {
+            Debug.LogWarning($"[Store] Init failed: {error}");
+        }
+
+        public void OnInitializeFailed(InitializationFailureReason error, string message)
+        {
+            Debug.LogWarning($"[Store] Init failed: {error} - {message}");
+        }
+
+        public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs e)
+        {
+            var productId = e.purchasedProduct.definition.id;
+            Debug.Log($"[Store] Purchase completed: {productId}. Grant content then confirm.");
+            return PurchaseProcessingResult.Complete;
+        }
+
+        public void OnPurchaseFailed(UnityEngine.Purchasing.Product product, PurchaseFailureReason reason)
+        {
+            Debug.LogWarning($"[Store] Purchase failed: {product.definition.id} - {reason}");
+        }
+    }
+}
