@@ -154,6 +154,11 @@ MonoBehaviour:
   panelBackgroundSprite: {fileID: 21300000, guid: aff6fed463f6f2b47aeb158a52faee33, type: 3}
   softIconSprite: {fileID: -1343713869933876737, guid: 413bc4c146d2d7c4e8ef4aef7868ef9d, type: 3}
   resourceIconSprite: {fileID: 3459587325552712601, guid: 47a24af73e0142f4f8b37ed0d62dcc45, type: 3}
+  boardBackgroundCatalog: {fileID: 0}
+  enemyPortraitGrunt: {fileID: -2011081452543692480, guid: bc84344c0497bc94999f81ef46cfc92b, type: 3}
+  enemyPortraitShield: {fileID: 4263489261941456917, guid: 7e0ed3960ecfd8b458fba0deb14b23a5, type: 3}
+  enemyPortraitBerserk: {fileID: 6071807438270461448, guid: 344d8c61286abd249bc1d9cc6245c775, type: 3}
+  mergeVfxPrefab: {fileID: 830309854224872637, guid: ee624714925dbb34ab34cc6604686ccd, type: 3}
 --- !u!4 &210626741
 Transform:
   m_ObjectHideFlags: 0

@@ -29,9 +29,25 @@ namespace MergeSurvivor.UI
         [SerializeField] private Sprite resourceIconSprite;
         [Tooltip("Optional. Assign to show a different background image per board (Art/Backgrounds).")]
         [SerializeField] private BoardBackgroundCatalog boardBackgroundCatalog;
+        [Tooltip("Fight result panel: archetype grunt (maps to bandit art).")]
+        [SerializeField] private Sprite enemyPortraitGrunt;
+        [Tooltip("Fight result panel: archetype shield (maps to scarab art).")]
+        [SerializeField] private Sprite enemyPortraitShield;
+        [Tooltip("Fight result panel: archetype berserk (maps to barbarian art).")]
+        [SerializeField] private Sprite enemyPortraitBerserk;
+        [Tooltip("Optional. Burst VFX on merge (e.g. Art/VFX/MergeVFX prefab). Assign in Inspector.")]
+        [SerializeField] private GameObject mergeVfxPrefab;
+        [Tooltip("Optional. Short clip when pieces merge.")]
+        [SerializeField] private AudioClip sfxMerge;
+        [Tooltip("Optional. Fight panel when you win.")]
+        [SerializeField] private AudioClip sfxFightWin;
+        [Tooltip("Optional. Fight panel when you lose.")]
+        [SerializeField] private AudioClip sfxFightLoss;
 
         private GameSession _session;
+        private AudioSource _uiAudio;
         private Image _boardBackgroundImage;
+        private Image _enemyPortraitImage;
         private ItemDatabase _items;
         private BoardCatalog _boardCatalog;
         private EnemyCatalog _enemyCatalog;
@@ -78,12 +94,27 @@ namespace MergeSurvivor.UI
         private void Awake()
         {
             SetupServices();
+            EnsureUiAudio();
             BuildUi();
             _isInRun = false;
             RefreshAll();
             RefreshRunStateUI();
             SetStatus("At hub. Start a run to play.");
             ShowOnboardingIfFirstTime();
+        }
+
+        private void EnsureUiAudio()
+        {
+            _uiAudio = GetComponent<AudioSource>();
+            if (_uiAudio == null) _uiAudio = gameObject.AddComponent<AudioSource>();
+            _uiAudio.playOnAwake = false;
+            _uiAudio.spatialBlend = 0f;
+        }
+
+        private void PlayUiOneShot(AudioClip clip)
+        {
+            if (clip == null || _uiAudio == null) return;
+            _uiAudio.PlayOneShot(clip);
         }
 
         private void SetupServices()
@@ -352,7 +383,7 @@ namespace MergeSurvivor.UI
                 var txt = Label("L", co.transform, Vector2.zero, Vector2.one, Vector2.zero, 11);
                 txt.transform.SetAsLastSibling();
                 var cv = co.AddComponent<CellView>();
-                cv.Bind(x, y, txt, pieceImage, itemVisualCatalog);
+                cv.Bind(x, y, txt, pieceImage, itemVisualCatalog, mergeVfxPrefab);
                 cv.OnDragStart += StartDrag;
                 cv.OnDropOn += DropOn;
                 cv.OnTap += TapCell;
@@ -427,9 +458,18 @@ namespace MergeSurvivor.UI
             r.anchorMax = new Vector2(0.92f, 0.78f);
             r.offsetMin = r.offsetMax = Vector2.zero;
 
-            _fightResultTitle = Label("ResultTitle", _fightResultPanel.transform, new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 32);
-            _fightResultSubtitle = Label("ResultSubtitle", _fightResultPanel.transform, new Vector2(0.5f, 0.62f), new Vector2(0.5f, 0.62f), Vector2.zero, DesertTheme.FontSizeHeading);
-            _fightResultRewards = Label("ResultRewards", _fightResultPanel.transform, new Vector2(0.5f, 0.42f), new Vector2(0.5f, 0.42f), Vector2.zero, DesertTheme.FontSizeBody);
+            _fightResultTitle = Label("ResultTitle", _fightResultPanel.transform, new Vector2(0.5f, 0.88f), new Vector2(0.5f, 0.88f), Vector2.zero, 32);
+            var enemyPortraitGo = Ui("EnemyPortrait", _fightResultPanel.transform);
+            var enemyPortraitRt = enemyPortraitGo.GetComponent<RectTransform>();
+            enemyPortraitRt.anchorMin = enemyPortraitRt.anchorMax = new Vector2(0.5f, 0.70f);
+            enemyPortraitRt.sizeDelta = new Vector2(96, 96);
+            enemyPortraitRt.anchoredPosition = Vector2.zero;
+            _enemyPortraitImage = enemyPortraitGo.AddComponent<Image>();
+            _enemyPortraitImage.preserveAspect = true;
+            _enemyPortraitImage.raycastTarget = false;
+            _enemyPortraitImage.enabled = false;
+            _fightResultSubtitle = Label("ResultSubtitle", _fightResultPanel.transform, new Vector2(0.5f, 0.54f), new Vector2(0.5f, 0.54f), Vector2.zero, DesertTheme.FontSizeHeading);
+            _fightResultRewards = Label("ResultRewards", _fightResultPanel.transform, new Vector2(0.5f, 0.36f), new Vector2(0.5f, 0.36f), Vector2.zero, DesertTheme.FontSizeBody);
             _fightResultRewards.color = DesertTheme.AccentGold;
             _fightResultRewards.GetComponent<RectTransform>().sizeDelta = new Vector2(300, 32);
 
@@ -717,6 +757,7 @@ namespace MergeSurvivor.UI
 
         private void ShowFightResult(CombatResult r)
         {
+            PlayUiOneShot(r.Won ? sfxFightWin : sfxFightLoss);
             _fightResultTitle.text = r.Won ? "Victory!" : "Defeat";
             _fightResultTitle.color = r.Won ? DesertTheme.TextVictory : DesertTheme.TextDefeat;
             _fightResultSubtitle.text = $"<color=#E5BA42>{r.PlayerPower}</color>  vs  <color=#C44030>{r.EnemyPower}</color>";
@@ -726,7 +767,37 @@ namespace MergeSurvivor.UI
             else
                 _fightResultRewards.text = r.Won ? "+rewards" : "Merge more pieces, then Fight again.";
             _fightResultRewards.color = r.Won ? DesertTheme.AccentGold : DesertTheme.TextSecondary;
+            if (_enemyPortraitImage != null)
+            {
+                var portrait = GetEnemyPortraitSprite(_session.CurrentEnemyArchetype?.Id);
+                if (portrait != null)
+                {
+                    _enemyPortraitImage.sprite = portrait;
+                    _enemyPortraitImage.enabled = true;
+                }
+                else
+                {
+                    _enemyPortraitImage.sprite = null;
+                    _enemyPortraitImage.enabled = false;
+                }
+            }
             _fightResultPanel.SetActive(true);
+        }
+
+        private Sprite GetEnemyPortraitSprite(string archetypeId)
+        {
+            if (string.IsNullOrEmpty(archetypeId)) return null;
+            switch (archetypeId)
+            {
+                case "grunt":
+                    return enemyPortraitGrunt != null ? enemyPortraitGrunt : Resources.Load<Sprite>("Enemies/bandit");
+                case "shield":
+                    return enemyPortraitShield != null ? enemyPortraitShield : Resources.Load<Sprite>("Enemies/gold-scarab");
+                case "berserk":
+                    return enemyPortraitBerserk != null ? enemyPortraitBerserk : Resources.Load<Sprite>("Enemies/barbarian");
+                default:
+                    return null;
+            }
         }
 
         private void OpenMeta() => _metaPanel.SetActive(true);
@@ -843,6 +914,7 @@ namespace MergeSurvivor.UI
 
         private IEnumerator PlayMergeFeedback(int x, int y)
         {
+            PlayUiOneShot(sfxMerge);
             var cv = _cells.Find(c => c.X == x && c.Y == y);
             if (cv == null) yield break;
             yield return cv.PlayMergeHighlight();
@@ -1044,18 +1116,20 @@ namespace MergeSurvivor.UI
         private Image _pieceImage;
         private RectTransform _pieceRect;
         private ItemVisualCatalog _visualCatalog;
+        private GameObject _mergeVfxPrefab;
         public int X { get; private set; }
         public int Y { get; private set; }
         public System.Action<int, int> OnDragStart;
         public System.Action<int, int> OnDropOn;
         public System.Action<int, int> OnTap;
 
-        public void Bind(int x, int y, TMP_Text label, Image pieceImage = null, ItemVisualCatalog catalog = null)
+        public void Bind(int x, int y, TMP_Text label, Image pieceImage = null, ItemVisualCatalog catalog = null, GameObject mergeVfxPrefab = null)
         {
             X = x; Y = y; _label = label;
             _pieceImage = pieceImage;
             _pieceRect = pieceImage != null ? pieceImage.GetComponent<RectTransform>() : null;
             _visualCatalog = catalog;
+            _mergeVfxPrefab = mergeVfxPrefab;
         }
 
         public void Set(string txt) => _label.text = txt;
@@ -1097,6 +1171,27 @@ namespace MergeSurvivor.UI
         public IEnumerator PlayMergeHighlight()
         {
             if (_pieceImage == null || _pieceRect == null) yield break;
+            if (_mergeVfxPrefab != null)
+            {
+                var vfx = Instantiate(_mergeVfxPrefab, transform);
+                vfx.transform.localPosition = Vector3.zero;
+                vfx.transform.localScale = Vector3.one * 45f;
+                var ps = vfx.GetComponent<ParticleSystem>();
+                if (ps != null)
+                {
+                    var main = ps.main;
+                    main.playOnAwake = false;
+                    var psr = vfx.GetComponent<ParticleSystemRenderer>();
+                    if (psr != null) psr.sortingOrder = 32000;
+                    ps.Clear();
+                    ps.Play();
+                    var startLt = main.startLifetime;
+                    var maxLife = Mathf.Max(startLt.constantMax, startLt.constant, startLt.constantMin);
+                    if (maxLife <= 0f) maxLife = 0.5f;
+                    Destroy(vfx, main.duration + maxLife + 0.2f);
+                }
+                else Destroy(vfx, 1f);
+            }
             var origColor = _pieceImage.color;
             var origScale = _pieceRect.localScale;
 

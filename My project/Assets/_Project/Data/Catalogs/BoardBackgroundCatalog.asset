@@ -14,14 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: MergeSurvivor.Data::BoardBackgroundCatalog
   boards:
   - boardIndex: 0
-    background: {fileID: 3443482160129419463, guid: 39d24e76d8e464a479807520e2357e71, type: 3}
-  - boardIndex: 1
-    background: {fileID: -5418687449969009060, guid: 860751d3d7a5c7f4083cee52672ad210, type: 3}
-  - boardIndex: 2
     background: {fileID: 8217000347411058007, guid: 7b85523b943f53346b14051db90dccc4, type: 3}
-  - boardIndex: 3
-    background: {fileID: -8724457499831377898, guid: 4981855d3794fcc4b846ae16777ba91b, type: 3}
-  - boardIndex: 4
+  - boardIndex: 1
+    background: {fileID: 3443482160129419463, guid: 39d24e76d8e464a479807520e2357e71, type: 3}
+  - boardIndex: 2
     background: {fileID: -1003233205114157074, guid: 1df749df9ed76c54c85835fe6cb68b10, type: 3}
-  - boardIndex: 5
-    background: {fileID: 1427954132773529619, guid: 4712f07440cbc0042aa89438796a8650, type: 3}
+  - boardIndex: 3
+    background: {fileID: -1003233205114157074, guid: 1df749df9ed76c54c85835fe6cb68b10, type: 3}
+  - boardIndex: 4
+    background: {fileID: -8724457499831377898, guid: 4981855d3794fcc4b846ae16777ba91b, type: 3}
