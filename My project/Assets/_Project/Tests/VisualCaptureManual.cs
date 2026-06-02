@@ -39,6 +39,7 @@ namespace MergeSurvivor.Tests
         {
             Directory.CreateDirectory(ShotDir);
             PlayerPrefs.DeleteKey("merge_survivor_onboarding_done");
+            PlayerPrefs.DeleteKey("merge_survivor_tutorial_done");
             PlayerPrefs.Save();
 
             // Load the REAL Launch scene so the scene's configured PrototypeBootstrap runs
@@ -50,6 +51,16 @@ namespace MergeSurvivor.Tests
             var bootstrap = Object.FindFirstObjectByType<PrototypeBootstrap>();
             Assert.IsNotNull(bootstrap, "Launch scene bootstrap not found.");
 
+            // Audio evidence: confirm the real scene wired music + SFX clips and music is playing.
+            var music = GetField<AudioSource>(bootstrap, "_musicAudio");
+            var sfxMerge = GetField<AudioClip>(bootstrap, "sfxMerge");
+            var sfxWin = GetField<AudioClip>(bootstrap, "sfxFightWin");
+            var sfxLoss = GetField<AudioClip>(bootstrap, "sfxFightLoss");
+            var sfxStart = GetField<AudioClip>(bootstrap, "sfxFightStart");
+            Debug.Log($"[Capture][Audio] music={(music != null && music.clip != null ? music.clip.name : "null")} " +
+                      $"isPlaying={(music != null && music.isPlaying)} merge={(sfxMerge != null)} win={(sfxWin != null)} " +
+                      $"loss={(sfxLoss != null)} start={(sfxStart != null)}");
+
             // ScreenCapture.CaptureScreenshot does not work in batchmode (no display swap),
             // so render the Overlay canvas through an explicit camera into a RenderTexture.
             SetupOffscreenCamera();
@@ -58,21 +69,33 @@ namespace MergeSurvivor.Tests
             // 01 - first-run onboarding overlay
             yield return Shot("01_onboarding");
 
-            // dismiss onboarding if present
-            var begin = Find<Button>("Btn_Begin Journey");
-            if (begin != null) begin.onClick.Invoke();
+            // Begin Journey -> interactive tutorial (step 1 highlights two matching crystals)
+            Find<Button>("Btn_Begin Journey")?.onClick.Invoke();
             yield return null;
-            yield return Shot("02_hub");
+            yield return Shot("02_tutorial_step1");
 
-            // enter a run
-            Invoke(bootstrap, "StartRunInternal");
+            // step 2 - merge result
+            Find<Button>("Btn_Next")?.onClick.Invoke();
             yield return null;
-            yield return Shot("03_board");
+            yield return Shot("03_tutorial_merge");
 
-            // force a guaranteed merge of three tier-1 crystals on the bottom row
+            // step 3 - FIGHT highlighted
+            Find<Button>("Btn_Next")?.onClick.Invoke();
+            yield return null;
+            yield return Shot("04_tutorial_fight");
+
+            // finish tutorial -> in a run
+            Find<Button>("Btn_Next")?.onClick.Invoke();
+            yield return null;
+            yield return Shot("05_board");
+
+            // fresh merge to show the on-cell sparkle burst
             var session = GetField<GameSession>(bootstrap, "_session");
             if (session != null)
             {
+                for (var y = 0; y < session.Board.Height; y++)
+                    for (var x = 0; x < session.Board.Width; x++)
+                        session.Board.Set(x, y, null);
                 session.Board.Set(0, 0, "pawn_t1");
                 session.Board.Set(1, 0, "pawn_t1");
                 session.Board.Set(2, 0, "pawn_t1");
@@ -86,21 +109,32 @@ namespace MergeSurvivor.Tests
                     c10.OnPointerClick(new PointerEventData(EventSystem.current));
                 }
                 yield return null;
-                yield return Shot("04_merge");
+                yield return Shot("06_merge_burst");
+
+                // empty the board so the fight is a guaranteed loss -> Defeat panel + revive
+                for (var y = 0; y < session.Board.Height; y++)
+                    for (var x = 0; x < session.Board.Width; x++)
+                        session.Board.Set(x, y, null);
+                Invoke(bootstrap, "RefreshAll");
+                yield return null;
             }
 
-            // fight -> result panel
+            // fight -> Defeat result panel (transparent enemy portrait)
             Invoke(bootstrap, "OnFight");
             yield return null;
-            yield return Shot("05_fight_result");
+            yield return Shot("07_fight_result");
 
-            // close result, open meta hub
-            var cont = Find<Button>("Btn_Continue");
-            if (cont != null) cont.onClick.Invoke();
+            // Continue -> revive prompt on loss
+            Find<Button>("Btn_Continue")?.onClick.Invoke();
+            yield return null;
+            yield return Shot("08_revive");
+
+            // Give Up -> hub, then open Meta Hub
+            Find<Button>("Btn_Give Up")?.onClick.Invoke();
             yield return null;
             Invoke(bootstrap, "OpenMeta");
             yield return null;
-            yield return Shot("06_meta");
+            yield return Shot("09_meta");
 
             if (_rt != null) { _rt.Release(); Object.DestroyImmediate(_rt); }
             if (_cam != null) Object.DestroyImmediate(_cam.gameObject);

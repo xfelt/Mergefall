@@ -362,6 +362,122 @@ namespace MergeSurvivor.Tests
             Assert.AreEqual(resourceExpected, loaded.Resource, "Progression resource should persist.");
         }
 
+        [UnityTest]
+        public IEnumerator Tutorial_FirstRun_ShowsStepsMergesAndDoesNotRepeat()
+        {
+            PlayerPrefs.DeleteKey("merge_survivor_onboarding_done");
+            PlayerPrefs.DeleteKey("merge_survivor_tutorial_done");
+            PlayerPrefs.Save();
+
+            var go = new GameObject("TestBootstrap");
+            var bootstrap = go.AddComponent<PrototypeBootstrap>();
+            yield return null;
+
+            var onboarding = FindObjectByNameIncludingInactive<GameObject>("OnboardingOverlay");
+            Assert.IsNotNull(onboarding, "Onboarding overlay missing.");
+            Assert.IsTrue(onboarding.activeSelf, "Onboarding should show on first run.");
+
+            var begin = FindObjectByNameIncludingInactive<Button>("Btn_Begin Journey");
+            Assert.IsNotNull(begin, "Begin Journey button missing.");
+            begin.onClick.Invoke();
+            yield return null;
+
+            var tutorial = FindObjectByNameIncludingInactive<GameObject>("TutorialOverlay");
+            Assert.IsNotNull(tutorial, "Tutorial overlay missing.");
+            Assert.IsTrue(tutorial.activeSelf, "Tutorial should start after Begin Journey.");
+
+            // Step 1 highlights two matching board items.
+            var hA = GetPrivateField<GameObject>(bootstrap, "_tutorialHighlightA");
+            var hB = GetPrivateField<GameObject>(bootstrap, "_tutorialHighlightB");
+            Assert.IsTrue(hA != null && hA.activeSelf, "Step 1 highlight A should be active.");
+            Assert.IsTrue(hB != null && hB.activeSelf, "Step 1 highlight B should be active.");
+
+            var next = FindObjectByNameIncludingInactive<Button>("Btn_Next");
+            Assert.IsNotNull(next, "Tutorial Next button missing.");
+
+            // Step 2: advancing performs the merge -> the result cell becomes tier 2.
+            next.onClick.Invoke();
+            yield return null;
+            var session = GetPrivateField<GameSession>(bootstrap, "_session");
+            Assert.AreEqual("pawn_t2", session.Board.Get(1, 0), "Tutorial step 2 should merge into T2.");
+
+            // Step 3 highlights the FIGHT button, then finishing closes the overlay.
+            next.onClick.Invoke();
+            yield return null;
+            next.onClick.Invoke();
+            yield return null;
+            Assert.IsFalse(tutorial.activeSelf, "Tutorial should close after the last step.");
+            Assert.AreEqual(1, PlayerPrefs.GetInt("merge_survivor_tutorial_done", 0), "Tutorial-done flag should be set.");
+
+            // A fresh bootstrap must NOT reshow onboarding or tutorial.
+            Object.DestroyImmediate(go);
+            yield return null;
+            var go2 = new GameObject("TestBootstrap2");
+            go2.AddComponent<PrototypeBootstrap>();
+            yield return null;
+            var onboarding2 = FindObjectByNameIncludingInactive<GameObject>("OnboardingOverlay");
+            Assert.IsFalse(onboarding2 != null && onboarding2.activeSelf, "Onboarding should not reappear.");
+            var tutorial2 = FindObjectByNameIncludingInactive<GameObject>("TutorialOverlay");
+            Assert.IsFalse(tutorial2 != null && tutorial2.activeSelf, "Tutorial should not reappear.");
+            Object.DestroyImmediate(go2);
+        }
+
+        [UnityTest]
+        public IEnumerator Tutorial_Skip_ClosesAndSetsDoneFlag()
+        {
+            PlayerPrefs.DeleteKey("merge_survivor_onboarding_done");
+            PlayerPrefs.DeleteKey("merge_survivor_tutorial_done");
+            PlayerPrefs.Save();
+
+            var go = new GameObject("TestBootstrap");
+            go.AddComponent<PrototypeBootstrap>();
+            yield return null;
+
+            FindObjectByNameIncludingInactive<Button>("Btn_Begin Journey").onClick.Invoke();
+            yield return null;
+            var tutorial = FindObjectByNameIncludingInactive<GameObject>("TutorialOverlay");
+            Assert.IsTrue(tutorial.activeSelf, "Tutorial should be open.");
+
+            var skip = FindObjectByNameIncludingInactive<Button>("Btn_Skip");
+            Assert.IsNotNull(skip, "Skip button missing.");
+            skip.onClick.Invoke();
+            yield return null;
+            Assert.IsFalse(tutorial.activeSelf, "Skip should close the tutorial.");
+            Assert.AreEqual(1, PlayerPrefs.GetInt("merge_survivor_tutorial_done", 0), "Skip should set the done flag.");
+            Object.DestroyImmediate(go);
+        }
+
+        [UnityTest]
+        public IEnumerator Loss_ShowsRevivePromptThenReturnsToHubOnGiveUp()
+        {
+            var go = new GameObject("TestBootstrap");
+            var bootstrap = go.AddComponent<PrototypeBootstrap>();
+            yield return null;
+
+            var session = GetPrivateField<GameSession>(bootstrap, "_session");
+            Assert.IsNotNull(session, "Session missing.");
+            for (var y = 0; y < session.Board.Height; y++)
+                for (var x = 0; x < session.Board.Width; x++)
+                    session.Board.Set(x, y, null); // empty board guarantees a loss
+
+            FindObjectByNameIncludingInactive<Button>("Btn_Fight").onClick.Invoke();
+            yield return null;
+
+            var continueBtn = FindObjectByNameIncludingInactive<Button>("Btn_Continue");
+            Assert.IsNotNull(continueBtn, "Fight result Continue button missing.");
+            continueBtn.onClick.Invoke();
+            yield return null;
+
+            var revive = FindObjectByNameIncludingInactive<GameObject>("RevivePanel");
+            Assert.IsNotNull(revive, "Revive panel missing.");
+            Assert.IsTrue(revive.activeSelf, "Loss should show the revive prompt.");
+
+            FindObjectByNameIncludingInactive<Button>("Btn_Give Up").onClick.Invoke();
+            yield return null;
+            Assert.IsFalse(revive.activeSelf, "Give Up should close the revive prompt.");
+            Object.DestroyImmediate(go);
+        }
+
         private static T FindObjectByNameIncludingInactive<T>(string objectName) where T : Object
         {
             if (typeof(T) == typeof(GameObject))

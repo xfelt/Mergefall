@@ -43,9 +43,14 @@ namespace MergeSurvivor.UI
         [SerializeField] private AudioClip sfxFightWin;
         [Tooltip("Optional. Fight panel when you lose.")]
         [SerializeField] private AudioClip sfxFightLoss;
+        [Tooltip("Optional. Plays when a fight begins.")]
+        [SerializeField] private AudioClip sfxFightStart;
+        [Tooltip("Optional. Looping background music.")]
+        [SerializeField] private AudioClip musicLoop;
 
         private GameSession _session;
         private AudioSource _uiAudio;
+        private AudioSource _musicAudio;
         private Image _boardBackgroundImage;
         private Image _enemyPortraitImage;
         private ItemDatabase _items;
@@ -63,10 +68,19 @@ namespace MergeSurvivor.UI
         private TMP_Text _resourceLabel;
         private GameObject _metaPanel;
         private GameObject _fightResultPanel;
+        private GameObject _revivePanel;
         private TMP_Text _fightResultTitle;
         private TMP_Text _fightResultSubtitle;
         private TMP_Text _fightResultRewards;
         private GameObject _onboardingOverlay;
+        private Canvas _canvas;
+        private GameObject _tutorialOverlay;
+        private GameObject _tutorialHighlightA;
+        private GameObject _tutorialHighlightB;
+        private TMP_Text _tutorialText;
+        private GameObject _tutorialNextButton;
+        private int _tutorialStep;
+        private const string TutorialDoneKey = "merge_survivor_tutorial_done";
         private GameObject _nextBoardButton;
         private GameObject _boardSelectPanel;
         private (int x, int y)? _selected;
@@ -109,6 +123,18 @@ namespace MergeSurvivor.UI
             if (_uiAudio == null) _uiAudio = gameObject.AddComponent<AudioSource>();
             _uiAudio.playOnAwake = false;
             _uiAudio.spatialBlend = 0f;
+
+            // Dedicated looping source for background music so SFX one-shots don't interrupt it.
+            _musicAudio = gameObject.AddComponent<AudioSource>();
+            _musicAudio.playOnAwake = false;
+            _musicAudio.loop = true;
+            _musicAudio.spatialBlend = 0f;
+            _musicAudio.volume = 0.35f;
+            if (musicLoop != null)
+            {
+                _musicAudio.clip = musicLoop;
+                _musicAudio.Play();
+            }
         }
 
         private void PlayUiOneShot(AudioClip clip)
@@ -228,6 +254,7 @@ namespace MergeSurvivor.UI
             EnsureFallbackCamera();
             EnsureEventSystem();
             var canvas = EnsureCanvas();
+            _canvas = canvas;
             var root = Ui("Root", canvas.transform);
             var rootRt = root.GetComponent<RectTransform>();
             Stretch(rootRt);
@@ -414,6 +441,7 @@ namespace MergeSurvivor.UI
             BuildBoardSelectPanel(root.transform);
             BuildFightResultPanel(root.transform);
             BuildOnboardingOverlay(root.transform);
+            BuildTutorialOverlay(root.transform);
         }
 
         private void BuildOnboardingOverlay(Transform root)
@@ -441,6 +469,7 @@ namespace MergeSurvivor.UI
                 PlayerPrefs.SetInt(OnboardingDoneKey, 1);
                 PlayerPrefs.Save();
                 _onboardingOverlay.SetActive(false);
+                StartTutorial();
             }, panelButtonSprite);
             playBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
             playBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
@@ -451,6 +480,157 @@ namespace MergeSurvivor.UI
         {
             if (PlayerPrefs.GetInt(OnboardingDoneKey, 0) != 0) return;
             _onboardingOverlay.SetActive(true);
+        }
+
+        // ----- First-run interactive tutorial (highlight items -> show merge -> highlight Fight) -----
+
+        private void BuildTutorialOverlay(Transform root)
+        {
+            _tutorialOverlay = Ui("TutorialOverlay", root);
+            var dim = _tutorialOverlay.AddComponent<Image>();
+            dim.color = new Color(0f, 0f, 0f, 0.62f);
+            dim.raycastTarget = true; // block board taps while coaching
+            Stretch(_tutorialOverlay.GetComponent<RectTransform>());
+
+            _tutorialHighlightA = MakeHighlight(_tutorialOverlay.transform);
+            _tutorialHighlightB = MakeHighlight(_tutorialOverlay.transform);
+
+            var card = Ui("TutorialCard", _tutorialOverlay.transform);
+            var cardImg = card.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { cardImg.sprite = panelBackgroundSprite; cardImg.type = Image.Type.Sliced; cardImg.color = Color.white; }
+            else cardImg.color = DesertTheme.PanelMid;
+            var cardRt = card.GetComponent<RectTransform>();
+            cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0f);
+            cardRt.pivot = new Vector2(0.5f, 0f);
+            cardRt.sizeDelta = new Vector2(740, 240);
+            cardRt.anchoredPosition = new Vector2(0, 70);
+
+            var tutTitle = Label("TutTitle", card.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -30), DesertTheme.FontSizeHeading);
+            tutTitle.text = "How to play";
+            tutTitle.color = DesertTheme.AccentGold;
+
+            _tutorialText = Label("TutText", card.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 10), DesertTheme.FontSizeCaption);
+            _tutorialText.GetComponent<RectTransform>().sizeDelta = new Vector2(680, 96);
+            _tutorialText.color = DesertTheme.TextPrimary;
+
+            var skip = ButtonGo("Skip", card.transform, new Vector2(-160, -88), SkipTutorial, panelButtonSprite);
+            skip.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+            _tutorialNextButton = ButtonGo("Next", card.transform, new Vector2(160, -88), TutorialNext, panelButtonSprite);
+            _tutorialNextButton.GetComponent<Image>().color = DesertTheme.AccentGold;
+            _tutorialNextButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+
+            _tutorialOverlay.SetActive(false);
+        }
+
+        private GameObject MakeHighlight(Transform parent)
+        {
+            var h = Ui("TutHighlight", parent);
+            var img = h.AddComponent<Image>();
+            if (panelButtonSprite != null) { img.sprite = panelButtonSprite; img.type = Image.Type.Sliced; }
+            var g = DesertTheme.AccentGold;
+            img.color = new Color(g.r, g.g, g.b, 0.42f);
+            img.raycastTarget = false;
+            var rt = h.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            h.SetActive(false);
+            return h;
+        }
+
+        // Public-ish entry: invoked by the onboarding "Begin Journey" button.
+        private void StartTutorial()
+        {
+            if (PlayerPrefs.GetInt(TutorialDoneKey, 0) != 0) return;
+            if (_session == null || _tutorialOverlay == null) return;
+            if (!_isInRun) StartRunInternal();
+            // Deterministic setup so the highlighted cells always contain a valid merge.
+            for (var yy = 0; yy < _session.Board.Height; yy++)
+            for (var xx = 0; xx < _session.Board.Width; xx++)
+                _session.Board.Set(xx, yy, null);
+            _session.Board.Set(0, 0, "pawn_t1");
+            _session.Board.Set(1, 0, "pawn_t1");
+            _session.Board.Set(2, 0, "pawn_t1");
+            RefreshAll();
+            _tutorialOverlay.SetActive(true);
+            _tutorialOverlay.transform.SetAsLastSibling();
+            ShowTutorialStep(0);
+        }
+
+        private void ShowTutorialStep(int step)
+        {
+            _tutorialStep = step;
+            if (_tutorialHighlightA != null) _tutorialHighlightA.SetActive(false);
+            if (_tutorialHighlightB != null) _tutorialHighlightB.SetActive(false);
+            switch (step)
+            {
+                case 0:
+                    _tutorialText.text = "Tap matching crystals to merge them — three of a kind forge a stronger crystal.";
+                    HighlightCell(0, 0, _tutorialHighlightA);
+                    HighlightCell(1, 0, _tutorialHighlightB);
+                    SetTutorialNextLabel("Merge");
+                    break;
+                case 1:
+                    _session.TryMergeAt(1, 0); // perform the scripted merge so the result is visible
+                    RefreshAll();
+                    _tutorialText.text = "Nice! They merged into a stronger crystal. Keep merging to grow your power.";
+                    HighlightCell(1, 0, _tutorialHighlightA);
+                    SetTutorialNextLabel("Next");
+                    break;
+                case 2:
+                    _tutorialText.text = "When your caravan is strong enough, tap FIGHT to battle the wave.";
+                    if (_fightButton != null)
+                    {
+                        MoveHighlightTo(_fightButton.GetComponent<RectTransform>(), _tutorialHighlightA);
+                        _tutorialHighlightA.SetActive(true);
+                    }
+                    SetTutorialNextLabel("Got it");
+                    break;
+                default:
+                    FinishTutorial();
+                    break;
+            }
+        }
+
+        private void TutorialNext() => ShowTutorialStep(_tutorialStep + 1);
+
+        private void SkipTutorial() => FinishTutorial();
+
+        private void FinishTutorial()
+        {
+            PlayerPrefs.SetInt(TutorialDoneKey, 1);
+            PlayerPrefs.Save();
+            if (_tutorialOverlay != null) _tutorialOverlay.SetActive(false);
+            if (_tutorialHighlightA != null) _tutorialHighlightA.SetActive(false);
+            if (_tutorialHighlightB != null) _tutorialHighlightB.SetActive(false);
+        }
+
+        private void SetTutorialNextLabel(string s)
+        {
+            var t = _tutorialNextButton != null ? _tutorialNextButton.GetComponentInChildren<TMP_Text>() : null;
+            if (t != null) t.text = s;
+        }
+
+        private void HighlightCell(int x, int y, GameObject highlight)
+        {
+            var idx = y * 4 + x;
+            if (idx < 0 || idx >= _cells.Count || highlight == null) return;
+            MoveHighlightTo(_cells[idx].GetComponent<RectTransform>(), highlight);
+            highlight.SetActive(true);
+        }
+
+        // Positions a highlight frame over a target RectTransform, in the overlay's local space.
+        private void MoveHighlightTo(RectTransform target, GameObject highlight)
+        {
+            if (target == null || highlight == null || _tutorialOverlay == null) return;
+            var overlayRt = _tutorialOverlay.GetComponent<RectTransform>();
+            var cam = (_canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay) ? _canvas.worldCamera : null;
+            var corners = new Vector3[4];
+            target.GetWorldCorners(corners);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(overlayRt, RectTransformUtility.WorldToScreenPoint(cam, corners[0]), cam, out var bl);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(overlayRt, RectTransformUtility.WorldToScreenPoint(cam, corners[2]), cam, out var tr);
+            var hrt = highlight.GetComponent<RectTransform>();
+            hrt.sizeDelta = (tr - bl) + new Vector2(18f, 18f);
+            hrt.anchoredPosition = (bl + tr) * 0.5f;
         }
 
         private void BuildFightResultPanel(Transform parent)
@@ -484,13 +664,62 @@ namespace MergeSurvivor.UI
                 _fightResultPanel.SetActive(false);
                 if (_lastFightWasLoss)
                 {
-                    _lastFightWasLoss = false;
-                    EndRun();
+                    // On loss, offer a revive before ending the run.
+                    ShowRevivePrompt();
                 }
             }, panelButtonSprite);
             continueBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
             continueBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
             _fightResultPanel.SetActive(false);
+
+            BuildRevivePanel(parent);
+        }
+
+        private void BuildRevivePanel(Transform parent)
+        {
+            _revivePanel = Ui("RevivePanel", parent);
+            var bg = _revivePanel.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { bg.sprite = panelBackgroundSprite; bg.type = Image.Type.Sliced; bg.color = Color.white; }
+            else bg.color = DesertTheme.PanelDark;
+            var r = _revivePanel.GetComponent<RectTransform>();
+            r.anchorMin = new Vector2(0.12f, 0.34f);
+            r.anchorMax = new Vector2(0.88f, 0.66f);
+            r.offsetMin = r.offsetMax = Vector2.zero;
+
+            var title = Label("ReviveTitle", _revivePanel.transform, new Vector2(0.5f, 0.86f), new Vector2(0.5f, 0.86f), Vector2.zero, DesertTheme.FontSizeHeading);
+            title.text = "You fell in battle";
+            title.color = DesertTheme.TextDefeat;
+            var body = Label("ReviveBody", _revivePanel.transform, new Vector2(0.5f, 0.60f), new Vector2(0.5f, 0.60f), Vector2.zero, DesertTheme.FontSizeCaption);
+            body.text = "Revive to keep your progress, or give up and return to the hub.";
+            body.GetComponent<RectTransform>().sizeDelta = new Vector2(560, 72);
+            body.color = DesertTheme.TextPrimary;
+
+            var giveUp = ButtonGo("Give Up", _revivePanel.transform, new Vector2(-130, -70), () =>
+            {
+                _revivePanel.SetActive(false);
+                _lastFightWasLoss = false;
+                EndRun();
+            }, panelButtonSprite);
+            giveUp.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+
+            var revive = ButtonGo("Revive", _revivePanel.transform, new Vector2(130, -70), () =>
+            {
+                // Stub revive: dismiss and let the player keep merging in the same run.
+                _revivePanel.SetActive(false);
+                _lastFightWasLoss = false;
+                SetStatus("Revived! Keep merging and fight again.");
+            }, panelButtonSprite);
+            revive.GetComponent<Image>().color = DesertTheme.AccentGold;
+            revive.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+
+            _revivePanel.SetActive(false);
+        }
+
+        private void ShowRevivePrompt()
+        {
+            if (_revivePanel == null) { EndRun(); return; }
+            _revivePanel.transform.SetAsLastSibling();
+            _revivePanel.SetActive(true);
         }
 
         private void BuildMeta(Transform parent)
@@ -754,6 +983,7 @@ namespace MergeSurvivor.UI
 
         private void OnFight()
         {
+            PlayUiOneShot(sfxFightStart);
             var r = _session.Fight();
             _lastFightWasLoss = !r.Won;
             SaveAccount();
@@ -1200,24 +1430,9 @@ namespace MergeSurvivor.UI
             if (_pieceImage == null || _pieceRect == null) yield break;
             if (_mergeVfxPrefab != null)
             {
-                var vfx = Instantiate(_mergeVfxPrefab, transform);
-                vfx.transform.localPosition = Vector3.zero;
-                vfx.transform.localScale = Vector3.one * 45f;
-                var ps = vfx.GetComponent<ParticleSystem>();
-                if (ps != null)
-                {
-                    var main = ps.main;
-                    main.playOnAwake = false;
-                    var psr = vfx.GetComponent<ParticleSystemRenderer>();
-                    if (psr != null) psr.sortingOrder = 32000;
-                    ps.Clear();
-                    ps.Play();
-                    var startLt = main.startLifetime;
-                    var maxLife = Mathf.Max(startLt.constantMax, startLt.constant, startLt.constantMin);
-                    if (maxLife <= 0f) maxLife = 0.5f;
-                    Destroy(vfx, main.duration + maxLife + 0.2f);
-                }
-                else Destroy(vfx, 1f);
+                // A world-space ParticleSystem does not map to screen-space UI coordinates
+                // (it rendered off-cell). Use a UI sparkle burst centered on this cell instead.
+                SpawnMergeBurst();
             }
             var origColor = _pieceImage.color;
             var origScale = _pieceRect.localScale;
@@ -1258,6 +1473,48 @@ namespace MergeSurvivor.UI
             const float c1 = 1.70158f;
             const float c3 = c1 + 1f;
             return 1f + c3 * Mathf.Pow(t - 1f, 3f) + c1 * Mathf.Pow(t - 1f, 2f);
+        }
+
+        // UI sparkle burst centered on this cell — positions correctly in any canvas mode.
+        private void SpawnMergeBurst()
+        {
+            const int count = 8;
+            for (var i = 0; i < count; i++)
+            {
+                var go = new GameObject("MergeSpark", typeof(RectTransform));
+                go.transform.SetParent(transform, false);
+                var img = go.AddComponent<Image>();
+                img.color = (i % 2 == 0) ? DesertTheme.AccentGold : new Color(1f, 0.95f, 0.8f, 1f);
+                img.raycastTarget = false;
+                var rt = go.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta = new Vector2(16f, 16f);
+                rt.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                var ang = (360f / count) * i * Mathf.Deg2Rad;
+                var dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                StartCoroutine(AnimateSpark(rt, img, dir));
+            }
+        }
+
+        private static IEnumerator AnimateSpark(RectTransform rt, Image img, Vector2 dir)
+        {
+            const float dur = 0.42f;
+            const float dist = 72f;
+            var baseColor = img.color;
+            var e = 0f;
+            while (e < dur && rt != null)
+            {
+                e += Time.deltaTime;
+                var t = Mathf.Clamp01(e / dur);
+                var outT = 1f - (1f - t) * (1f - t); // ease-out quad
+                rt.anchoredPosition = dir * (dist * outT);
+                rt.localScale = Vector3.one * Mathf.Lerp(1.25f, 0.15f, t);
+                var c = baseColor; c.a = 1f - t; img.color = c;
+                yield return null;
+            }
+            if (rt != null) Destroy(rt.gameObject);
         }
     }
 }
