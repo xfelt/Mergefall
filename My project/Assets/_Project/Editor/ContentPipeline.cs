@@ -326,10 +326,12 @@ namespace MergeSurvivor.Editor
             if (itemsProp != null && itemsProp.arraySize > 0) { so.ApplyModifiedProperties(); return; }
             var items = new List<ItemDefinition>
             {
-                CreateItemAsset("pawn_t1", "Pawn", "pawn", 1, 5),
-                CreateItemAsset("pawn_t2", "Knight", "pawn", 2, 12),
-                CreateItemAsset("pawn_t3", "Rook", "pawn", 3, 24),
-                CreateItemAsset("pawn_t4", "Queen", "pawn", 4, 45)
+                CreateItemAsset("pawn_t1", "Quartz", "pawn", 1, 5),
+                CreateItemAsset("pawn_t2", "Amber", "pawn", 2, 12),
+                CreateItemAsset("pawn_t3", "Turquoise", "pawn", 3, 24),
+                CreateItemAsset("pawn_t4", "Amethyst", "pawn", 4, 45),
+                CreateItemAsset("pawn_t5", "Emerald", "pawn", 5, 80),
+                CreateItemAsset("pawn_t6", "Sunstone", "pawn", 6, 140)
             };
             itemsProp.ClearArray();
             foreach (var item in items)

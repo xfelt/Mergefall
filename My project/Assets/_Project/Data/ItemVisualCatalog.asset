@@ -14,16 +14,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: MergeSurvivor.Data::MergeSurvivor.Data.ItemVisualCatalog
   itemSprites:
   - ItemId: pawn_t1
-    Sprite: {fileID: 21300000, guid: f3d41c8ab3ac38049bed346c97bd7943, type: 3}
+    Sprite: {fileID: 21300000, guid: 94d90f96e3ba3bc499f0d6689d1f180f, type: 3}
     SpriteSelected: {fileID: 0}
   - ItemId: pawn_t2
-    Sprite: {fileID: 21300000, guid: 5da16d6ae9e9f0f4aae593e900965e32, type: 3}
+    Sprite: {fileID: 21300000, guid: 4a624e9b10c61234c8f8cb68724f9f1d, type: 3}
     SpriteSelected: {fileID: 0}
   - ItemId: pawn_t3
-    Sprite: {fileID: 21300000, guid: c3bf7037b3e513e4dba1488b0e11f59b, type: 3}
+    Sprite: {fileID: 21300000, guid: f5851caf6f93b6541948fd90833a1c27, type: 3}
     SpriteSelected: {fileID: 0}
   - ItemId: pawn_t4
-    Sprite: {fileID: 21300000, guid: 023a073e12b97534c9a2bc1abbf64208, type: 3}
+    Sprite: {fileID: 21300000, guid: 2b8fa048dfb7a8d4790e48c17f3fbf38, type: 3}
+    SpriteSelected: {fileID: 0}
+  - ItemId: pawn_t5
+    Sprite: {fileID: 21300000, guid: 14e62fb288e0e18488d716c2c8be14cc, type: 3}
+    SpriteSelected: {fileID: 0}
+  - ItemId: pawn_t6
+    Sprite: {fileID: 21300000, guid: d208ab3774eec184890a363bf9dafbf2, type: 3}
     SpriteSelected: {fileID: 0}
   tierFallbacks: []
   emptyCellSprite: {fileID: 0}

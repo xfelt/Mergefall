@@ -7,8 +7,8 @@
 > - **Overall status:** **PASS**
 > - Compiles with 0 errors; all EditMode (1/1) and PlayMode (14/14, +1 explicit capture) tests pass.
 > - Board renders real item sprites + per-board backgrounds; fight panel shows Victory/Defeat + score; on-cell merge VFX; safe-area handling.
-> - **Gaps closed this pass:** procedural audio (merge/fight-start/win/loss + looping music, wired & playing); 3-step interactive tutorial with Skip (highlight items → merge → highlight Fight); revive prompt on loss; transparent enemy portraits; correctly-positioned merge burst.
-> - **Open (decision, not a bug):** content implements 4 item tiers; brief references 6 (needs art + balance design). Audio is placeholder/synthesized.
+> - **Gaps closed this pass:** procedural audio (merge/fight-start/win/loss + looping music, wired & playing); 3-step interactive tutorial with Skip (highlight items → merge → highlight Fight); revive prompt on loss; transparent enemy portraits; correctly-positioned merge burst; **6 distinct gem tiers** (Quartz→Sunstone) with fresh art + balanced powers replacing the temporary 4.
+> - **Open:** all art (gems, portraits, backgrounds) and audio are first-pass/placeholder — swap for final assets when available. `google-services.json` + SDK defines deferred by design.
 > - Full details: see `VERIFICATION_REPORT.md`.
 
 Unity Android project for the merge/fight/meta loop. Code lives under **`Assets/_Project`**: Core, Data, Gameplay, Meta, Economy, Platform, UI, Editor, Tests.

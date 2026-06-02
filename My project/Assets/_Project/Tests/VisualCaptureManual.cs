@@ -136,6 +136,22 @@ namespace MergeSurvivor.Tests
             yield return null;
             yield return Shot("09_meta");
 
+            // Showcase all 6 item tiers on the board, distinct gems.
+            Find<Button>("Btn_Return")?.onClick.Invoke();
+            yield return null;
+            if (session != null)
+            {
+                for (var y = 0; y < session.Board.Height; y++)
+                    for (var x = 0; x < session.Board.Width; x++)
+                        session.Board.Set(x, y, null);
+                var tiers = new[] { "pawn_t1", "pawn_t2", "pawn_t3", "pawn_t4", "pawn_t5", "pawn_t6" };
+                for (var i = 0; i < tiers.Length; i++)
+                    session.Board.Set(i % 4, i / 4, tiers[i]);
+                Invoke(bootstrap, "RefreshAll");
+                yield return null;
+                yield return Shot("10_all_tiers");
+            }
+
             if (_rt != null) { _rt.Release(); Object.DestroyImmediate(_rt); }
             if (_cam != null) Object.DestroyImmediate(_cam.gameObject);
             Assert.Pass($"Screenshots written to {ShotDir}");

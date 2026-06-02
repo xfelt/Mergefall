@@ -61,7 +61,7 @@ Covered by tests: `Tutorial_FirstRun_ShowsStepsMergesAndDoesNotRepeat`, `Tutoria
 
 | Screen | Result | Note |
 |---|---|---|
-| Board — items distinct across tiers | **PASS** | T1 vs T2 sprites clearly distinct. (Game implements **4** item tiers — see open item below.) |
+| Board — items distinct across **6** tiers | **FIXED → PASS** | Replaced the 4 temporary crystal sprites with a fresh set of **6** faceted gem tiers — Quartz / Amber / Turquoise / Amethyst / Emerald / Sunstone — each a distinct hue with tier-scaling glow/sparkle. Item list + visual catalog + content pipeline all extended to 6 (`pawn_t1..t6`, powers 5/12/24/45/80/140). Merge chains t1→t6 and caps cleanly. See `Logs/screenshots/.../10_all_tiers.png`. |
 | Fight — win/loss differentiated | **FIXED** | Red "Defeat" / gold "Victory!" + colored score. |
 | Enemy portrait | **FIXED** | Black background keyed out → transparent (alpha-feathered) on `Art/Enemies/*.png`. |
 | Meta Hub — styled | **PASS** | Title + styled green/blue buttons. |
@@ -94,13 +94,15 @@ Covered by tests: `Tutorial_FirstRun_ShowsStepsMergesAndDoesNotRepeat`, `Tutoria
 | `UI/PrototypeBootstrap.cs` | Fix `Label` width (panel titles); `ApplySafeArea`; bullet glyph; **3-step tutorial**; **revive prompt**; **fight-start SFX + looping music**; **on-cell UI merge burst**. |
 | `Gameplay/Scenes/Launch.unity` | Wire `itemVisualCatalog`, `boardBackgroundCatalog`, and 5 audio clips. |
 | `Art/Enemies/*.png` | Keyed out opaque black backgrounds → transparent. |
+| `Art/Items/item_gem_t1..t6.png` (new) | Fresh 6-tier faceted gem art (replaced the 4 temporary crystals). |
+| `Data/ItemVisualCatalog.asset` | Rebuilt with 6 tier→sprite entries. |
+| `Editor/ContentPipeline.cs` | Item generator extended to the 6 gem tiers. |
 | `Audio/*.wav` (new) | Generated merge / fight-start / win / loss SFX + 8s seamless music loop. |
-| `Tests/VisualCaptureManual.cs` (new) | `[Explicit]` render-to-RenderTexture capture harness + audio diagnostic. |
+| `Tests/VisualCaptureManual.cs` (new) | `[Explicit]` render-to-RenderTexture capture harness + audio diagnostic + 6-tier showcase. |
 
 ## Remaining items (decisions, not bugs)
 
-1. **Item-tier count** — content/data implements **4** tiers (`pawn_t1..t4`, art `item_crystal_t1..t4`); the
-   brief references 6. Extending to 6 needs 2 new tier sprites + balance/data design — a product decision,
-   not a defect. The board is visually distinct across all implemented tiers.
-2. **Audio is placeholder** — clips are procedurally generated (synthesized tones), not final production audio.
+1. **Audio is placeholder** — clips are procedurally generated (synthesized tones), not final production audio.
+2. **Item/enemy/background art is original placeholder** — the gem tiers, portraits, and backgrounds are
+   functional first-pass art (the prior set was temporary); swap for final art when available.
 3. **`google-services.json` + real SDK defines** — deferred by design (platform stubs in place).

@@ -149,11 +149,14 @@ namespace MergeSurvivor.UI
             if (_items == null)
             {
                 _items = ScriptableObject.CreateInstance<ItemDatabase>();
-                var i1 = ScriptableObject.CreateInstance<ItemDefinition>(); i1.ConfigureRuntime("pawn_t1", "Pawn", "pawn", 1, 5);
-                var i2 = ScriptableObject.CreateInstance<ItemDefinition>(); i2.ConfigureRuntime("pawn_t2", "Knight", "pawn", 2, 12);
-                var i3 = ScriptableObject.CreateInstance<ItemDefinition>(); i3.ConfigureRuntime("pawn_t3", "Rook", "pawn", 3, 24);
-                var i4 = ScriptableObject.CreateInstance<ItemDefinition>(); i4.ConfigureRuntime("pawn_t4", "Queen", "pawn", 4, 45);
-                _items.ConfigureRuntime(new List<ItemDefinition> { i1, i2, i3, i4 });
+                // 6 gem tiers (family "pawn" preserves save/merge-chain compatibility).
+                var i1 = ScriptableObject.CreateInstance<ItemDefinition>(); i1.ConfigureRuntime("pawn_t1", "Quartz", "pawn", 1, 5);
+                var i2 = ScriptableObject.CreateInstance<ItemDefinition>(); i2.ConfigureRuntime("pawn_t2", "Amber", "pawn", 2, 12);
+                var i3 = ScriptableObject.CreateInstance<ItemDefinition>(); i3.ConfigureRuntime("pawn_t3", "Turquoise", "pawn", 3, 24);
+                var i4 = ScriptableObject.CreateInstance<ItemDefinition>(); i4.ConfigureRuntime("pawn_t4", "Amethyst", "pawn", 4, 45);
+                var i5 = ScriptableObject.CreateInstance<ItemDefinition>(); i5.ConfigureRuntime("pawn_t5", "Emerald", "pawn", 5, 80);
+                var i6 = ScriptableObject.CreateInstance<ItemDefinition>(); i6.ConfigureRuntime("pawn_t6", "Sunstone", "pawn", 6, 140);
+                _items.ConfigureRuntime(new List<ItemDefinition> { i1, i2, i3, i4, i5, i6 });
             }
             else
             {
@@ -1506,7 +1509,9 @@ namespace MergeSurvivor.UI
             var e = 0f;
             while (e < dur && rt != null)
             {
-                e += Time.deltaTime;
+                // Frame-based step (with a deltaTime floor) so the burst always completes and
+                // self-destroys in a bounded number of frames, even when deltaTime is ~0.
+                e += Mathf.Max(Time.deltaTime, dur / 18f);
                 var t = Mathf.Clamp01(e / dur);
                 var outT = 1f - (1f - t) * (1f - t); // ease-out quad
                 rt.anchoredPosition = dir * (dist * outT);
