@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using NUnit.Framework;
 using UnityEngine;
@@ -27,9 +28,11 @@ namespace MergeSurvivor.Editor
             Assert.Greater(csvLines.Length, 1, "CSV should have header + at least one data row.");
             var firstData = csvLines[1].Split(',');
             Assert.GreaterOrEqual(firstData.Length, 6, "Data row should have enough columns.");
-            Assert.IsTrue(int.TryParse(firstData[0], out _), "board_index should be numeric.");
-            Assert.IsTrue(int.TryParse(firstData[4], out _), "wave should be numeric.");
-            Assert.IsTrue(float.TryParse(firstData[6], out _), "win_rate should be numeric.");
+            // The CSV is written with InvariantCulture (period decimal separator), so parse
+            // with InvariantCulture here too — otherwise fr-FR/de-DE etc. reject "1.000".
+            Assert.IsTrue(int.TryParse(firstData[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out _), "board_index should be numeric.");
+            Assert.IsTrue(int.TryParse(firstData[4], NumberStyles.Integer, CultureInfo.InvariantCulture, out _), "wave should be numeric.");
+            Assert.IsTrue(float.TryParse(firstData[6], NumberStyles.Float, CultureInfo.InvariantCulture, out _), "win_rate should be numeric.");
 
             var summary = File.ReadAllText(summaryPath);
             Assert.IsFalse(string.IsNullOrWhiteSpace(summary), "Summary should not be empty.");

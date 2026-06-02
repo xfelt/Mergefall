@@ -229,7 +229,11 @@ namespace MergeSurvivor.UI
             EnsureEventSystem();
             var canvas = EnsureCanvas();
             var root = Ui("Root", canvas.transform);
-            Stretch(root.GetComponent<RectTransform>());
+            var rootRt = root.GetComponent<RectTransform>();
+            Stretch(rootRt);
+            // Keep all content (notably the top HUD bar) inside the device safe area so it
+            // is not clipped by a notch / status bar. On hardware without insets this is a no-op.
+            ApplySafeArea(rootRt);
 
             var hudBar = Ui("HudBar", root.transform);
             var hudBarRt = hudBar.GetComponent<RectTransform>();
@@ -427,7 +431,9 @@ namespace MergeSurvivor.UI
             subtitle.text = "Board Quest";
             subtitle.color = DesertTheme.TextSecondary;
             var body = Label("Body", _onboardingOverlay.transform, new Vector2(0.5f, 0.52f), new Vector2(0.5f, 0.52f), Vector2.zero, DesertTheme.FontSizeCaption);
-            body.text = "\u2726 Merge 3 identical crystals to forge a stronger one\n\u2694 Grow your caravan power, then tap Fight\n\u26FA Visit the Merchant Tent to upgrade";
+            // Use a plain bullet (U+2022, present in the default TMP font) \u2014 the previous
+            // decorative glyphs (U+2726/U+2694/U+26FA) are absent from LiberationSans and render as tofu.
+            body.text = "\u2022 Merge 3 identical crystals to forge a stronger one\n\u2022 Grow your caravan power, then tap Fight\n\u2022 Visit the Merchant Tent to upgrade";
             body.GetComponent<RectTransform>().sizeDelta = new Vector2(460, 110);
             body.color = DesertTheme.TextPrimary;
             var playBtn = ButtonGo("Begin Journey", _onboardingOverlay.transform, new Vector2(0, -80), () =>
@@ -1056,6 +1062,23 @@ namespace MergeSurvivor.UI
             r.offsetMax = Vector2.zero;
         }
 
+        // Insets a full-screen RectTransform to Screen.safeArea so content avoids notches/system bars.
+        private static void ApplySafeArea(RectTransform r)
+        {
+            var sw = Screen.width;
+            var sh = Screen.height;
+            if (sw <= 0 || sh <= 0) return;
+            var sa = Screen.safeArea;
+            var min = sa.position;
+            var max = sa.position + sa.size;
+            min.x /= sw; min.y /= sh;
+            max.x /= sw; max.y /= sh;
+            r.anchorMin = min;
+            r.anchorMax = max;
+            r.offsetMin = Vector2.zero;
+            r.offsetMax = Vector2.zero;
+        }
+
         private static TMP_Text Label(string name, Transform parent, Vector2 amin, Vector2 amax, Vector2 apos, float size, TextAlignmentOptions align = TextAlignmentOptions.Center)
         {
             var go = Ui(name, parent);
@@ -1063,7 +1086,11 @@ namespace MergeSurvivor.UI
             r.anchorMin = amin;
             r.anchorMax = amax;
             r.anchoredPosition = apos;
-            r.sizeDelta = new Vector2(0, 28);
+            // Point-anchored labels (amin==amax, e.g. panel titles) need an explicit width:
+            // a zero-width rect combined with Ellipsis overflow clips the text to nothing.
+            // Stretched labels keep width 0 so they fill the parent's width.
+            var pointAnchored = Mathf.Approximately(amin.x, amax.x);
+            r.sizeDelta = new Vector2(pointAnchored ? 760f : 0f, Mathf.Max(28f, size + 12f));
             var t = go.AddComponent<TextMeshProUGUI>();
             t.fontSize = size;
             t.alignment = align;

@@ -41,8 +41,10 @@ namespace MergeSurvivor.Tests
 
             Assert.IsNotNull(Object.FindFirstObjectByType<Canvas>(), "Canvas was not created.");
             Assert.IsNotNull(Object.FindFirstObjectByType<EventSystem>(), "EventSystem was not created.");
-            Assert.IsNotNull(GameObject.Find("Btn_Spawn Item"), "Spawn button missing.");
-            Assert.IsNotNull(GameObject.Find("Btn_Fight"), "Fight button missing.");
+            // Spawn/Fight buttons exist but start inactive at the hub (only shown during a run),
+            // so look them up including inactive objects rather than GameObject.Find (active-only).
+            Assert.IsNotNull(FindObjectByNameIncludingInactive<GameObject>("Btn_Spawn Item"), "Spawn button missing.");
+            Assert.IsNotNull(FindObjectByNameIncludingInactive<GameObject>("Btn_Fight"), "Fight button missing.");
             Assert.IsNotNull(GameObject.Find("Btn_Meta Hub"), "Meta Hub button missing.");
         }
 
@@ -54,8 +56,10 @@ namespace MergeSurvivor.Tests
 
             yield return null;
 
-            var spawnButton = GameObject.Find("Btn_Spawn Item")?.GetComponent<Button>();
-            var fightButton = GameObject.Find("Btn_Fight")?.GetComponent<Button>();
+            // Spawn/Fight buttons are run-gated and start inactive at the hub; their click
+            // handlers still operate on the session directly, so invoking onClick is valid.
+            var spawnButton = FindObjectByNameIncludingInactive<Button>("Btn_Spawn Item");
+            var fightButton = FindObjectByNameIncludingInactive<Button>("Btn_Fight");
             var metaButton = GameObject.Find("Btn_Meta Hub")?.GetComponent<Button>();
             var returnButton = FindObjectByNameIncludingInactive<Button>("Btn_Return");
             var statusText = GameObject.Find("Status")?.GetComponent<TMP_Text>();
@@ -83,7 +87,14 @@ namespace MergeSurvivor.Tests
 
             fightButton.onClick.Invoke();
             yield return null;
-            StringAssert.Contains("/", statusText.text, "Fight status does not include combat score.");
+            // The combat score now appears in the fight result panel (power "X vs Y"),
+            // which opens on fight, rather than in the status label.
+            var fightResultPanel = FindObjectByNameIncludingInactive<GameObject>("FightResultPanel");
+            Assert.IsNotNull(fightResultPanel, "Fight result panel missing.");
+            Assert.IsTrue(fightResultPanel.activeSelf, "Fight should open the result panel.");
+            var resultSubtitle = FindObjectByNameIncludingInactive<TMP_Text>("ResultSubtitle");
+            Assert.IsNotNull(resultSubtitle, "Fight result subtitle missing.");
+            StringAssert.Contains("vs", resultSubtitle.text, "Fight result should show the power comparison.");
         }
 
         [UnityTest]
@@ -145,7 +156,9 @@ namespace MergeSurvivor.Tests
 
             var metaButton = GameObject.Find("Btn_Meta Hub")?.GetComponent<Button>();
             var unlockButton = FindObjectByNameIncludingInactive<Button>("Btn_Unlock Next Board");
-            var nextBoardButton = GameObject.Find("Btn_Next Board")?.GetComponent<Button>();
+            // Next Board button is run-gated and only activates once a second board is unlocked,
+            // so it can be inactive here — look it up including inactive objects.
+            var nextBoardButton = FindObjectByNameIncludingInactive<Button>("Btn_Next Board");
             var boardHud = GameObject.Find("BoardHUD")?.GetComponent<TMP_Text>();
 
             Assert.IsNotNull(metaButton, "Meta button missing.");

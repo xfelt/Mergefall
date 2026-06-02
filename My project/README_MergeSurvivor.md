@@ -1,5 +1,15 @@
 # Merge Survivor: Board Quest
 
+> ## Last editor verification
+> - **Date:** 2026-06-02
+> - **Unity:** 6000.3.11f1 (Unity 6), Unity Personal license (headless entitlement active)
+> - **Resolutions tested:** 1080×1920 and 390×844 (portrait)
+> - **Overall status:** **PARTIAL PASS**
+> - Compiles with 0 errors; all EditMode (1/1) and PlayMode (11/11) tests pass after fixes.
+> - Board now renders real item sprites + per-board backgrounds; fight panel shows Victory/Defeat + score; safe-area handling added.
+> - **Open gaps (need assets/decisions):** no audio assets exist (silent); first-run is a static onboarding splash, not the 3-step highlighted tutorial; no revive prompt on loss; enemy portrait art has an opaque background; merge particle VFX is mispositioned in screen-space UI.
+> - Full details: see `VERIFICATION_REPORT.md`.
+
 Unity Android project for the merge/fight/meta loop. Code lives under **`Assets/_Project`**: Core, Data, Gameplay, Meta, Economy, Platform, UI, Editor, Tests.
 
 ## Current state
