@@ -100,9 +100,22 @@ Covered by tests: `Tutorial_FirstRun_ShowsStepsMergesAndDoesNotRepeat`, `Tutoria
 | `Audio/*.wav` (new) | Generated merge / fight-start / win / loss SFX + 8s seamless music loop. |
 | `Tests/VisualCaptureManual.cs` (new) | `[Explicit]` render-to-RenderTexture capture harness + audio diagnostic + 6-tier showcase. |
 
-## Remaining items (decisions, not bugs)
+## Production-asset pass (replaced all placeholder art/audio)
 
-1. **Audio is placeholder** — clips are procedurally generated (synthesized tones), not final production audio.
-2. **Item/enemy/background art is original placeholder** — the gem tiers, portraits, and backgrounds are
-   functional first-pass art (the prior set was temporary); swap for final art when available.
-3. **`google-services.json` + real SDK defines** — deferred by design (platform stubs in place).
+- **UI**: regenerated the 9-slice panel/button sprites — buttons are now glossy, rounded, gradient-shaded
+  (authored near-white so the theme tint reads cleanly); modals use a beveled parchment frame.
+- **Items**: 6 faceted gem tiers (distinct hues, glow, sparkle).
+- **Enemies**: portraits composited into themed circular medallions (gradient + gold rim + framed figure),
+  replacing the flat silhouettes.
+- **HUD icons**: clean coin / faceted diamond / crystal-cluster currency icons.
+- **Audio**: re-synthesized as stereo, produced sound — additive **bell** synthesis, ADSR envelopes, and
+  convolution **reverb**; merge chime, cinematic fight-start impact, victory arpeggio, somber defeat sting,
+  and a 16s seamless ambient music loop (bass + pads + arpeggio + soft kick). Verified playing in-scene.
+
+All art/audio is now original first-party production-quality content authored procedurally (the AI image
+service was unavailable — hard free-tier quota). Backgrounds and the LilitaOne font were already final and kept.
+
+## Remaining items (decisions / external only)
+
+1. **`google-services.json` + real SDK defines** — deferred by design (platform stubs in place); requires
+   real accounts/credentials (AdMob, Firebase, Play Billing) to finalize.
