@@ -25,5 +25,11 @@ MonoBehaviour:
   - ItemId: pawn_t4
     Sprite: {fileID: 21300000, guid: 023a073e12b97534c9a2bc1abbf64208, type: 3}
     SpriteSelected: {fileID: 0}
+  - ItemId: pawn_t5
+    Sprite: {fileID: 21300000, guid: 7c5e1a9b2d4f3e6081a2b3c4d5e6f705, type: 3}
+    SpriteSelected: {fileID: 0}
+  - ItemId: pawn_t6
+    Sprite: {fileID: 21300000, guid: 7c5e1a9b2d4f3e6081a2b3c4d5e6f706, type: 3}
+    SpriteSelected: {fileID: 0}
   tierFallbacks: []
   emptyCellSprite: {fileID: 0}
