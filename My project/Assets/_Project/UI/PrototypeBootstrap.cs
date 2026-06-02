@@ -46,6 +46,7 @@ namespace MergeSurvivor.UI
 
         private GameSession _session;
         private AudioSource _uiAudio;
+        private AudioManager _audio;
         private Image _boardBackgroundImage;
         private Image _enemyPortraitImage;
         private ItemDatabase _items;
@@ -66,11 +67,25 @@ namespace MergeSurvivor.UI
         private TMP_Text _fightResultTitle;
         private TMP_Text _fightResultSubtitle;
         private TMP_Text _fightResultRewards;
+        private Image _playerBarFill;
+        private Image _enemyBarFill;
+        private TMP_Text _playerPowerLabel;
+        private TMP_Text _enemyPowerLabel;
+        private GameObject _fightContinueButton;
+        private bool _resolvingFight;
         private GameObject _onboardingOverlay;
+        private GameObject _tutorialOverlay;
+        private GameObject _tutorialHighlightHolder;
+        private TMP_Text _tutorialText;
+        private TMP_Text _tutorialStepLabel;
+        private bool _tutorialActive;
+        private bool _tutorialNext;
+        private bool _tutorialSkip;
         private GameObject _nextBoardButton;
         private GameObject _boardSelectPanel;
         private (int x, int y)? _selected;
         private readonly List<CellView> _cells = new();
+        private readonly List<Image> _tutorialHighlights = new();
 
         private bool _isInRun;
         private bool _boardSelectForStartRun;
@@ -82,6 +97,7 @@ namespace MergeSurvivor.UI
         private GameObject _boardSelectButton;
 
         private const string OnboardingDoneKey = "merge_survivor_onboarding_done";
+        private const string TutorialDoneKey = "merge_survivor_tutorial_done";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawn()
@@ -100,6 +116,7 @@ namespace MergeSurvivor.UI
             RefreshAll();
             RefreshRunStateUI();
             SetStatus("At hub. Start a run to play.");
+            _audio.PlayMusic(AudioManager.MusicHub);
             ShowOnboardingIfFirstTime();
         }
 
@@ -109,12 +126,7 @@ namespace MergeSurvivor.UI
             if (_uiAudio == null) _uiAudio = gameObject.AddComponent<AudioSource>();
             _uiAudio.playOnAwake = false;
             _uiAudio.spatialBlend = 0f;
-        }
-
-        private void PlayUiOneShot(AudioClip clip)
-        {
-            if (clip == null || _uiAudio == null) return;
-            _uiAudio.PlayOneShot(clip);
+            _audio = AudioManager.Ensure();
         }
 
         private void SetupServices()
@@ -127,7 +139,9 @@ namespace MergeSurvivor.UI
                 var i2 = ScriptableObject.CreateInstance<ItemDefinition>(); i2.ConfigureRuntime("pawn_t2", "Knight", "pawn", 2, 12);
                 var i3 = ScriptableObject.CreateInstance<ItemDefinition>(); i3.ConfigureRuntime("pawn_t3", "Rook", "pawn", 3, 24);
                 var i4 = ScriptableObject.CreateInstance<ItemDefinition>(); i4.ConfigureRuntime("pawn_t4", "Queen", "pawn", 4, 45);
-                _items.ConfigureRuntime(new List<ItemDefinition> { i1, i2, i3, i4 });
+                var i5 = ScriptableObject.CreateInstance<ItemDefinition>(); i5.ConfigureRuntime("pawn_t5", "King", "pawn", 5, 85);
+                var i6 = ScriptableObject.CreateInstance<ItemDefinition>(); i6.ConfigureRuntime("pawn_t6", "Emperor", "pawn", 6, 160);
+                _items.ConfigureRuntime(new List<ItemDefinition> { i1, i2, i3, i4, i5, i6 });
             }
             else
             {
@@ -410,6 +424,7 @@ namespace MergeSurvivor.UI
             BuildBoardSelectPanel(root.transform);
             BuildFightResultPanel(root.transform);
             BuildOnboardingOverlay(root.transform);
+            BuildTutorialOverlay(root.transform);
         }
 
         private void BuildOnboardingOverlay(Transform root)
@@ -447,6 +462,180 @@ namespace MergeSurvivor.UI
             _onboardingOverlay.SetActive(true);
         }
 
+        private void BuildTutorialOverlay(Transform root)
+        {
+            _tutorialOverlay = Ui("TutorialOverlay", root);
+            Stretch(_tutorialOverlay.GetComponent<RectTransform>());
+
+            // Dimmer: darkens the scene and absorbs stray taps during the coached steps.
+            var dimmer = Ui("TutorialDimmer", _tutorialOverlay.transform);
+            Stretch(dimmer.GetComponent<RectTransform>());
+            var dimImg = dimmer.AddComponent<Image>();
+            dimImg.color = new Color(0.04f, 0.03f, 0.02f, 0.62f);
+            dimImg.raycastTarget = true; // block board interaction; advance is via the Next button
+
+            // Highlight holder sits above the dimmer so coach marks are clearly visible.
+            _tutorialHighlightHolder = Ui("TutorialHighlights", _tutorialOverlay.transform);
+            Stretch(_tutorialHighlightHolder.GetComponent<RectTransform>());
+            _tutorialHighlightHolder.GetComponent<RectTransform>().SetAsLastSibling();
+
+            // Bottom banner with instruction text + Next / Skip.
+            var banner = Ui("TutorialBanner", _tutorialOverlay.transform);
+            var bannerRt = banner.GetComponent<RectTransform>();
+            bannerRt.anchorMin = new Vector2(0.05f, 0.05f);
+            bannerRt.anchorMax = new Vector2(0.95f, 0.27f);
+            bannerRt.offsetMin = bannerRt.offsetMax = Vector2.zero;
+            var bannerBg = banner.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { bannerBg.sprite = panelBackgroundSprite; bannerBg.type = Image.Type.Sliced; bannerBg.color = Color.white; }
+            else bannerBg.color = DesertTheme.PanelMid;
+
+            _tutorialStepLabel = Label("TutStep", banner.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -22), DesertTheme.FontSizeCaption);
+            _tutorialStepLabel.color = DesertTheme.AccentGold;
+
+            _tutorialText = Label("TutText", banner.transform, new Vector2(0.05f, 0.42f), new Vector2(0.95f, 0.86f), Vector2.zero, DesertTheme.FontSizeBody, TextAlignmentOptions.Center);
+            _tutorialText.color = DesertTheme.TextPrimary;
+            _tutorialText.overflowMode = TextOverflowModes.Overflow;
+
+            var nextBtn = ButtonGo("Next", banner.transform, new Vector2(80, 24), () => _tutorialNext = true, panelButtonSprite);
+            var nextRt = nextBtn.GetComponent<RectTransform>();
+            nextRt.anchorMin = nextRt.anchorMax = new Vector2(0.5f, 0f);
+            nextRt.sizeDelta = new Vector2(150, DesertTheme.ButtonHeight);
+            nextRt.anchoredPosition = new Vector2(90, 30);
+            nextBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
+            nextBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+
+            var skipBtn = ButtonGo("Skip", banner.transform, new Vector2(-90, 30), () => _tutorialSkip = true, panelButtonSprite);
+            var skipRt = skipBtn.GetComponent<RectTransform>();
+            skipRt.anchorMin = skipRt.anchorMax = new Vector2(0.5f, 0f);
+            skipRt.sizeDelta = new Vector2(120, DesertTheme.ButtonHeight);
+            skipRt.anchoredPosition = new Vector2(-90, 30);
+            skipBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+
+            _tutorialOverlay.SetActive(false);
+        }
+
+        private IEnumerator RunTutorial()
+        {
+            _tutorialActive = true;
+            _tutorialSkip = false;
+            _tutorialOverlay.SetActive(true);
+            _tutorialOverlay.transform.SetAsLastSibling();
+
+            var steps = new (string label, string text, System.Func<List<RectTransform>> targets)[]
+            {
+                ("Step 1 of 3", "Tap a piece, then tap a matching piece to swap them. Bring identical crystals together!", GetMergePairTargets),
+                ("Step 2 of 3", "Line up 3 identical crystals to merge them into a stronger tier — that grows your squad power.", GetBoardTargets),
+                ("Step 3 of 3", "When your squad is ready, tap the FIGHT button to battle the incoming wave!", GetFightButtonTargets),
+            };
+
+            foreach (var step in steps)
+            {
+                if (_tutorialSkip) break;
+                _tutorialStepLabel.text = step.label;
+                _tutorialText.text = step.text;
+                SetTutorialHighlights(step.targets());
+                _tutorialNext = false;
+                while (!_tutorialNext && !_tutorialSkip)
+                {
+                    PulseTutorialHighlights();
+                    yield return null;
+                }
+            }
+
+            EndTutorial();
+        }
+
+        private void EndTutorial()
+        {
+            ClearTutorialHighlights();
+            if (_tutorialOverlay != null) _tutorialOverlay.SetActive(false);
+            _tutorialActive = false;
+            PlayerPrefs.SetInt(TutorialDoneKey, 1);
+            PlayerPrefs.Save();
+        }
+
+        private List<RectTransform> GetFightButtonTargets()
+        {
+            var list = new List<RectTransform>();
+            if (_fightButton != null) list.Add(_fightButton.GetComponent<RectTransform>());
+            return list;
+        }
+
+        private List<RectTransform> GetBoardTargets()
+        {
+            var list = new List<RectTransform>();
+            var container = _cells.Count > 0 ? _cells[0].transform.parent.parent : null;
+            if (container is RectTransform rt) list.Add(rt);
+            return list;
+        }
+
+        // Finds two board cells holding identical pieces (best teaching example), with fallbacks.
+        private List<RectTransform> GetMergePairTargets()
+        {
+            var list = new List<RectTransform>();
+            var byId = new Dictionary<string, CellView>();
+            foreach (var c in _cells)
+            {
+                var id = _session.Board.Get(c.X, c.Y);
+                if (string.IsNullOrEmpty(id)) continue;
+                if (byId.TryGetValue(id, out var first))
+                {
+                    list.Add(first.GetComponent<RectTransform>());
+                    list.Add(c.GetComponent<RectTransform>());
+                    return list;
+                }
+                byId[id] = c;
+            }
+            // Fallback: highlight the first couple of filled cells, else the whole board.
+            foreach (var c in _cells)
+            {
+                if (string.IsNullOrEmpty(_session.Board.Get(c.X, c.Y))) continue;
+                list.Add(c.GetComponent<RectTransform>());
+                if (list.Count == 2) return list;
+            }
+            return list.Count > 0 ? list : GetBoardTargets();
+        }
+
+        private void SetTutorialHighlights(List<RectTransform> targets)
+        {
+            ClearTutorialHighlights();
+            if (targets == null) return;
+            foreach (var target in targets)
+            {
+                if (target == null) continue;
+                var go = Ui("Highlight", _tutorialHighlightHolder.transform);
+                var rt = go.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.sizeDelta = target.rect.size + new Vector2(18f, 18f);
+                rt.position = target.position;
+                var img = go.AddComponent<Image>();
+                if (panelButtonSprite != null) { img.sprite = panelButtonSprite; img.type = Image.Type.Sliced; }
+                img.color = new Color(DesertTheme.AccentGold.r, DesertTheme.AccentGold.g, DesertTheme.AccentGold.b, 0.35f);
+                img.raycastTarget = false;
+                _tutorialHighlights.Add(img);
+            }
+        }
+
+        private void PulseTutorialHighlights()
+        {
+            var pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f);
+            foreach (var img in _tutorialHighlights)
+            {
+                if (img == null) continue;
+                var a = Mathf.Lerp(0.22f, 0.5f, pulse);
+                var c = img.color; c.a = a; img.color = c;
+                var s = Mathf.Lerp(1.0f, 1.08f, pulse);
+                img.rectTransform.localScale = new Vector3(s, s, 1f);
+            }
+        }
+
+        private void ClearTutorialHighlights()
+        {
+            foreach (var img in _tutorialHighlights)
+                if (img != null) Destroy(img.gameObject);
+            _tutorialHighlights.Clear();
+        }
+
         private void BuildFightResultPanel(Transform parent)
         {
             _fightResultPanel = Ui("FightResultPanel", parent);
@@ -458,23 +647,29 @@ namespace MergeSurvivor.UI
             r.anchorMax = new Vector2(0.92f, 0.78f);
             r.offsetMin = r.offsetMax = Vector2.zero;
 
-            _fightResultTitle = Label("ResultTitle", _fightResultPanel.transform, new Vector2(0.5f, 0.88f), new Vector2(0.5f, 0.88f), Vector2.zero, 32);
+            _fightResultTitle = Label("ResultTitle", _fightResultPanel.transform, new Vector2(0.5f, 0.90f), new Vector2(0.5f, 0.90f), Vector2.zero, 32);
             var enemyPortraitGo = Ui("EnemyPortrait", _fightResultPanel.transform);
             var enemyPortraitRt = enemyPortraitGo.GetComponent<RectTransform>();
-            enemyPortraitRt.anchorMin = enemyPortraitRt.anchorMax = new Vector2(0.5f, 0.70f);
-            enemyPortraitRt.sizeDelta = new Vector2(96, 96);
+            enemyPortraitRt.anchorMin = enemyPortraitRt.anchorMax = new Vector2(0.5f, 0.74f);
+            enemyPortraitRt.sizeDelta = new Vector2(86, 86);
             enemyPortraitRt.anchoredPosition = Vector2.zero;
             _enemyPortraitImage = enemyPortraitGo.AddComponent<Image>();
             _enemyPortraitImage.preserveAspect = true;
             _enemyPortraitImage.raycastTarget = false;
             _enemyPortraitImage.enabled = false;
-            _fightResultSubtitle = Label("ResultSubtitle", _fightResultPanel.transform, new Vector2(0.5f, 0.54f), new Vector2(0.5f, 0.54f), Vector2.zero, DesertTheme.FontSizeHeading);
-            _fightResultRewards = Label("ResultRewards", _fightResultPanel.transform, new Vector2(0.5f, 0.36f), new Vector2(0.5f, 0.36f), Vector2.zero, DesertTheme.FontSizeBody);
-            _fightResultRewards.color = DesertTheme.AccentGold;
-            _fightResultRewards.GetComponent<RectTransform>().sizeDelta = new Vector2(300, 32);
 
-            var continueBtn = ButtonGo("Continue", _fightResultPanel.transform, new Vector2(0, -70), () =>
+            // Power-race bars: "Your Squad" (gold) vs the wave (red).
+            (_playerBarFill, _playerPowerLabel) = MakePowerBar(_fightResultPanel.transform, 0.55f, "Your Squad", DesertTheme.AccentGold);
+            (_enemyBarFill, _enemyPowerLabel) = MakePowerBar(_fightResultPanel.transform, 0.42f, "The Wave", DesertTheme.BtnDanger);
+
+            _fightResultSubtitle = Label("ResultSubtitle", _fightResultPanel.transform, new Vector2(0.5f, 0.30f), new Vector2(0.5f, 0.30f), Vector2.zero, DesertTheme.FontSizeHeading);
+            _fightResultRewards = Label("ResultRewards", _fightResultPanel.transform, new Vector2(0.5f, 0.19f), new Vector2(0.5f, 0.19f), Vector2.zero, DesertTheme.FontSizeBody);
+            _fightResultRewards.color = DesertTheme.AccentGold;
+            _fightResultRewards.GetComponent<RectTransform>().sizeDelta = new Vector2(320, 32);
+
+            _fightContinueButton = ButtonGo("Continue", _fightResultPanel.transform, new Vector2(0, -78), () =>
             {
+                if (_resolvingFight) return; // ignore taps while the sequence is animating
                 _fightResultPanel.SetActive(false);
                 if (_lastFightWasLoss)
                 {
@@ -482,9 +677,50 @@ namespace MergeSurvivor.UI
                     EndRun();
                 }
             }, panelButtonSprite);
-            continueBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
-            continueBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            _fightContinueButton.GetComponent<Image>().color = DesertTheme.AccentGold;
+            _fightContinueButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
             _fightResultPanel.SetActive(false);
+        }
+
+        // Builds a labeled horizontal power bar; returns the fill Image and the value label.
+        private (Image fill, TMP_Text value) MakePowerBar(Transform parent, float anchorY, string caption, Color fillColor)
+        {
+            var row = Ui($"PowerBar_{caption}", parent);
+            var rowRt = row.GetComponent<RectTransform>();
+            rowRt.anchorMin = new Vector2(0.10f, anchorY);
+            rowRt.anchorMax = new Vector2(0.90f, anchorY);
+            rowRt.sizeDelta = new Vector2(0, 46);
+            rowRt.anchoredPosition = Vector2.zero;
+
+            var caps = Label("Caption", row.transform, new Vector2(0, 0.55f), new Vector2(1, 1f), Vector2.zero, DesertTheme.FontSizeCaption, TextAlignmentOptions.Left);
+            caps.text = caption;
+            caps.color = DesertTheme.TextSecondary;
+            caps.GetComponent<RectTransform>().offsetMin = new Vector2(2, 0);
+
+            var track = Ui("Track", row.transform);
+            var trackRt = track.GetComponent<RectTransform>();
+            trackRt.anchorMin = new Vector2(0, 0f);
+            trackRt.anchorMax = new Vector2(0.78f, 0.5f);
+            trackRt.offsetMin = new Vector2(2, 2);
+            trackRt.offsetMax = new Vector2(0, -2);
+            var trackImg = track.AddComponent<Image>();
+            trackImg.color = new Color(0f, 0f, 0f, 0.45f);
+            trackImg.raycastTarget = false;
+
+            var fillGo = Ui("Fill", track.transform);
+            Stretch(fillGo.GetComponent<RectTransform>());
+            var fill = fillGo.AddComponent<Image>();
+            fill.color = fillColor;
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fill.fillAmount = 0f;
+            fill.raycastTarget = false;
+
+            var value = Label("Value", row.transform, new Vector2(0.80f, 0f), new Vector2(1f, 0.5f), Vector2.zero, DesertTheme.FontSizeBody, TextAlignmentOptions.Right);
+            value.text = "0";
+            value.color = fillColor;
+            return (fill, value);
         }
 
         private void BuildMeta(Transform parent)
@@ -682,15 +918,19 @@ namespace MergeSurvivor.UI
             _session.ResetRun();
             for (var i = 0; i < 6; i++) _session.TrySpawn();
             _isInRun = true;
+            _audio.PlayMusic(AudioManager.MusicGameplay);
             SetStatus($"Run started: {_session.CurrentBoard?.DisplayName}. Merge & fight!");
             RefreshAll();
             RefreshRunStateUI();
+            if (!_tutorialActive && PlayerPrefs.GetInt(TutorialDoneKey, 0) == 0)
+                StartCoroutine(RunTutorial());
         }
 
         private void EndRun()
         {
             _session.ResetRun();
             _isInRun = false;
+            _audio.PlayMusic(AudioManager.MusicHub);
             SetStatus("Returned to hub. Start a new run when ready.");
             SaveAccount();
             RefreshAll();
@@ -748,6 +988,8 @@ namespace MergeSurvivor.UI
 
         private void OnFight()
         {
+            if (_resolvingFight) return;
+            _audio.PlaySfx(AudioManager.SfxFightStart);
             var r = _session.Fight();
             _lastFightWasLoss = !r.Won;
             SaveAccount();
@@ -757,31 +999,94 @@ namespace MergeSurvivor.UI
 
         private void ShowFightResult(CombatResult r)
         {
-            PlayUiOneShot(r.Won ? sfxFightWin : sfxFightLoss);
+            // Set up the static parts, then hand off to the animated resolution.
+            if (_enemyPortraitImage != null)
+            {
+                var portrait = GetEnemyPortraitSprite(_session.CurrentEnemyArchetype?.Id);
+                _enemyPortraitImage.sprite = portrait;
+                _enemyPortraitImage.enabled = portrait != null;
+            }
+            StartCoroutine(AnimateFightResolution(r));
+        }
+
+        // 2.5s suspenseful power-race: bars + numbers count up, brief clash, then the verdict.
+        private IEnumerator AnimateFightResolution(CombatResult r)
+        {
+            _resolvingFight = true;
+            var playerPower = Mathf.Max(0, r.PlayerPower);
+            var enemyPower = Mathf.Max(0, r.EnemyPower);
+            var maxPower = Mathf.Max(1, Mathf.Max(playerPower, enemyPower));
+
+            // Reset to a neutral "battle starting" state.
+            _fightResultTitle.text = "Battle!";
+            _fightResultTitle.color = DesertTheme.AccentGold;
+            _fightResultTitle.rectTransform.localScale = Vector3.one;
+            _fightResultSubtitle.text = "The clash begins\u2026";
+            _fightResultSubtitle.color = DesertTheme.TextSecondary;
+            _fightResultRewards.text = string.Empty;
+            if (_playerBarFill != null) _playerBarFill.fillAmount = 0f;
+            if (_enemyBarFill != null) _enemyBarFill.fillAmount = 0f;
+            if (_playerPowerLabel != null) _playerPowerLabel.text = "0";
+            if (_enemyPowerLabel != null) _enemyPowerLabel.text = "0";
+            if (_fightContinueButton != null) _fightContinueButton.SetActive(false);
+            _fightResultPanel.SetActive(true);
+
+            yield return new WaitForSecondsRealtime(0.25f);
+
+            // Count-up race (eased), bars normalized to the stronger side.
+            const float raceTime = 1.4f;
+            var elapsed = 0f;
+            while (elapsed < raceTime)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                var t = Mathf.Clamp01(elapsed / raceTime);
+                var e = 1f - Mathf.Pow(1f - t, 3f); // easeOutCubic
+                if (_playerBarFill != null) _playerBarFill.fillAmount = (playerPower / (float)maxPower) * e;
+                if (_enemyBarFill != null) _enemyBarFill.fillAmount = (enemyPower / (float)maxPower) * e;
+                if (_playerPowerLabel != null) _playerPowerLabel.text = Mathf.RoundToInt(playerPower * e).ToString();
+                if (_enemyPowerLabel != null) _enemyPowerLabel.text = Mathf.RoundToInt(enemyPower * e).ToString();
+                yield return null;
+            }
+            if (_playerPowerLabel != null) _playerPowerLabel.text = playerPower.ToString();
+            if (_enemyPowerLabel != null) _enemyPowerLabel.text = enemyPower.ToString();
+
+            // Suspense beat with a flash on the winning bar.
+            var winnerBar = r.Won ? _playerBarFill : _enemyBarFill;
+            var winnerColor = r.Won ? DesertTheme.AccentGold : DesertTheme.BtnDanger;
+            for (var f = 0; f < 3; f++)
+            {
+                if (winnerBar != null) winnerBar.color = Color.white;
+                yield return new WaitForSecondsRealtime(0.08f);
+                if (winnerBar != null) winnerBar.color = winnerColor;
+                yield return new WaitForSecondsRealtime(0.08f);
+            }
+
+            // Verdict: title pop + color, rewards, audio, continue button.
+            _audio.PlaySfx(r.Won ? AudioManager.SfxWin : AudioManager.SfxLoss, r.Won ? sfxFightWin : sfxFightLoss);
             _fightResultTitle.text = r.Won ? "Victory!" : "Defeat";
             _fightResultTitle.color = r.Won ? DesertTheme.TextVictory : DesertTheme.TextDefeat;
-            _fightResultSubtitle.text = $"<color=#E5BA42>{r.PlayerPower}</color>  vs  <color=#C44030>{r.EnemyPower}</color>";
+            _fightResultSubtitle.text = r.Won ? "Your caravan prevails!" : "The wave overwhelms you\u2026";
             _fightResultSubtitle.color = DesertTheme.TextPrimary;
             if (r.Won && _combatConfig != null)
                 _fightResultRewards.text = $"+{_combatConfig.WinSoft} <color=#E5BA42>\u2726</color>  +{_combatConfig.WinResource} <color=#D9A050>\u2B22</color>";
             else
                 _fightResultRewards.text = r.Won ? "+rewards" : "Merge more pieces, then Fight again.";
             _fightResultRewards.color = r.Won ? DesertTheme.AccentGold : DesertTheme.TextSecondary;
-            if (_enemyPortraitImage != null)
+
+            // Title bounce.
+            var pop = 0f;
+            const float popTime = 0.3f;
+            while (pop < popTime)
             {
-                var portrait = GetEnemyPortraitSprite(_session.CurrentEnemyArchetype?.Id);
-                if (portrait != null)
-                {
-                    _enemyPortraitImage.sprite = portrait;
-                    _enemyPortraitImage.enabled = true;
-                }
-                else
-                {
-                    _enemyPortraitImage.sprite = null;
-                    _enemyPortraitImage.enabled = false;
-                }
+                pop += Time.unscaledDeltaTime;
+                var s = 1f + 0.35f * (1f - Mathf.Clamp01(pop / popTime));
+                _fightResultTitle.rectTransform.localScale = new Vector3(s, s, 1f);
+                yield return null;
             }
-            _fightResultPanel.SetActive(true);
+            _fightResultTitle.rectTransform.localScale = Vector3.one;
+
+            if (_fightContinueButton != null) _fightContinueButton.SetActive(true);
+            _resolvingFight = false;
         }
 
         private Sprite GetEnemyPortraitSprite(string archetypeId)
@@ -884,6 +1189,7 @@ namespace MergeSurvivor.UI
         {
             if (_session.Board.IsEmpty(x, y)) return;
             _selected = (x, y);
+            _audio.PlaySfx(AudioManager.SfxPickup);
         }
 
         private void TapCell(int x, int y)
@@ -892,6 +1198,7 @@ namespace MergeSurvivor.UI
             {
                 if (_session.Board.IsEmpty(x, y)) return;
                 _selected = (x, y);
+                _audio.PlaySfx(AudioManager.SfxPickup);
                 return;
             }
             DropOn(x, y);
@@ -914,7 +1221,7 @@ namespace MergeSurvivor.UI
 
         private IEnumerator PlayMergeFeedback(int x, int y)
         {
-            PlayUiOneShot(sfxMerge);
+            _audio.PlaySfx(AudioManager.SfxMerge, sfxMerge);
             var cv = _cells.Find(c => c.X == x && c.Y == y);
             if (cv == null) yield break;
             yield return cv.PlayMergeHighlight();

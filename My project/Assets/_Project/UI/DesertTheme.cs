@@ -31,6 +31,8 @@ namespace MergeSurvivor.UI
         public static readonly Color Tier2 = new(0.30f, 0.55f, 0.88f, 1f);  // Blue lapis shard
         public static readonly Color Tier3 = new(0.65f, 0.35f, 0.82f, 1f);  // Amethyst
         public static readonly Color Tier4 = new(0.92f, 0.75f, 0.22f, 1f);  // Polished gold jewel
+        public static readonly Color Tier5 = new(0.86f, 0.20f, 0.30f, 1f);  // Ruby
+        public static readonly Color Tier6 = new(0.85f, 0.92f, 1.00f, 1f);  // Radiant diamond
 
         // === TYPOGRAPHY ===
         public static readonly Color TextPrimary = new(1f, 0.97f, 0.90f, 1f);       // Pale cream
@@ -75,7 +77,9 @@ namespace MergeSurvivor.UI
                 1 => Tier1,
                 2 => Tier2,
                 3 => Tier3,
-                _ => Tier4
+                4 => Tier4,
+                5 => Tier5,
+                _ => Tier6
             };
         }
     }

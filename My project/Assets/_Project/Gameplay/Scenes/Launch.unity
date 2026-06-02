@@ -148,13 +148,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81c14e4bdf35b5f439aaf089a8a13c1e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: MergeSurvivor.UI::MergeSurvivor.UI.PrototypeBootstrap
-  itemVisualCatalog: {fileID: 0}
+  itemVisualCatalog: {fileID: 11400000, guid: 3ef0c4ac641845f408dfdcc9822f5a4c, type: 2}
   premiumIconSprite: {fileID: 0}
   panelButtonSprite: {fileID: 21300000, guid: 23058dbd56532e44b9613b61cc32791c, type: 3}
   panelBackgroundSprite: {fileID: 21300000, guid: aff6fed463f6f2b47aeb158a52faee33, type: 3}
   softIconSprite: {fileID: -1343713869933876737, guid: 413bc4c146d2d7c4e8ef4aef7868ef9d, type: 3}
   resourceIconSprite: {fileID: 3459587325552712601, guid: 47a24af73e0142f4f8b37ed0d62dcc45, type: 3}
-  boardBackgroundCatalog: {fileID: 0}
+  boardBackgroundCatalog: {fileID: 11400000, guid: 98b175509f9d5144da70bd77ff0f4fe5, type: 2}
   enemyPortraitGrunt: {fileID: -2011081452543692480, guid: bc84344c0497bc94999f81ef46cfc92b, type: 3}
   enemyPortraitShield: {fileID: 4263489261941456917, guid: 7e0ed3960ecfd8b458fba0deb14b23a5, type: 3}
   enemyPortraitBerserk: {fileID: 6071807438270461448, guid: 344d8c61286abd249bc1d9cc6245c775, type: 3}

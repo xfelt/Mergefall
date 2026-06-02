@@ -21,11 +21,25 @@ Unity Android project for the merge/fight/meta loop. Code lives under **`Assets/
 | **9** | Android AAB build + release checklist + keystore/CI env | Done |
 | **10** | PlayMode + smoke + balance editor tests | Done |
 
+## Playability pass (A–E): done vs TODO
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| **A** | Visual assets: 6 mergeable tiers (gem sprites), board/enemy/icon/UI/VFX art, scene wiring | Done |
+| **B** | Animated fight resolution (power-race bars, count-up, suspense, win/loss reveal) | Done |
+| **C** | First-run 3-step coach tutorial (swap→merge→fight), skip, persisted once | Done |
+| **D** | Audio: procedural SFX (pickup/merge/fight/win/loss) + gameplay & hub music loops | Done |
+| **E** | Real SDK wiring (Billing/AdMob/Firebase) behind scripting defines | TODO (stubs in place) |
+
+See `ASSETS.md` for the full asset manifest and `Tools/generate_audio.py` /
+`Tools/generate_items.py` for the procedural generators (CC0).
+
 **Still TODO**
 
-- Replace stubs with real implementations (Play Billing, AdMob, Firebase Analytics/Remote Config).
+- Phase E: replace stubs with real implementations (Play Billing, AdMob, Firebase Analytics/Remote Config).
 - Add `google-services.json` and production product/ad unit IDs (see `RELEASE_CHECKLIST.md`).
-- Optional: consolidate default board/enemy data (currently fallbacks in `PrototypeBootstrap`, `ContentPipeline`, and `BalanceSimulationTool`) into single source (e.g. seeded Resources or Content Pipeline only).
+- Apply recommended audio import settings on first editor open (music → Streaming; see `ASSETS.md`).
+- Optional: consolidate default board/enemy/item data (currently fallbacks in `PrototypeBootstrap`, `ContentPipeline`, and `BalanceSimulationTool`) into single source (e.g. seeded Resources or Content Pipeline only).
 
 ## Structure
 - `Assets/_Project/Core` base contracts and rewards
