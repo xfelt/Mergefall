@@ -17,7 +17,7 @@ using UnityEngine.InputSystem.UI;
 
 namespace MergeSurvivor.UI
 {
-    public sealed class PrototypeBootstrap : MonoBehaviour
+    public sealed partial class PrototypeBootstrap : MonoBehaviour
     {
         [SerializeField] private ItemVisualCatalog itemVisualCatalog;
         [SerializeField] private Sprite premiumIconSprite;
@@ -121,6 +121,7 @@ namespace MergeSurvivor.UI
             SetStatus("At hub. Start a run to play.");
             _audio.PlayMusic(AudioManager.MusicHub);
             ShowOnboardingIfFirstTime();
+            MaybeShowDailyReward();
         }
 
         private void EnsureUiAudio()
@@ -227,6 +228,9 @@ namespace MergeSurvivor.UI
             var simulationOverrides = simulation != null ? simulation.ToOverrideDictionary() : null;
             BalanceRemoteConfigApplier.Apply(remoteConfig, _combatConfig, economy, simulationOverrides);
 
+            // Meta/monetization services (collection, gacha, daily, prestige, storefront).
+            SetupMonetizationServices(save, ads, store, analytics);
+
             _session = new GameSession(
                 new BoardState(4, 4),
                 _boardCatalog,
@@ -239,7 +243,9 @@ namespace MergeSurvivor.UI
                 _inventory,
                 _progression,
                 ads,
-                analytics);
+                analytics,
+                _collection,
+                _prestige);
         }
 
         private void BuildUi()
@@ -460,11 +466,30 @@ namespace MergeSurvivor.UI
             _boardSelectButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
             _endRunButton = ButtonGo("End Run", rowSecondary.transform, Vector2.zero, OnEndRun, panelButtonSprite);
             _endRunButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+
+            // Always-available economy/meta row (Shop, Heroes, Lucky Chest, Daily).
+            var rowTertiary = ButtonRow("RowTertiary", actionArea.transform);
+            var shopBtn = ButtonGo("Shop", rowTertiary.transform, Vector2.zero, OpenShop, panelButtonSprite);
+            shopBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
+            shopBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            var heroesBtn = ButtonGo("Heroes", rowTertiary.transform, Vector2.zero, OpenCollection, panelButtonSprite);
+            heroesBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+            var chestBtn = ButtonGo("Lucky Chest", rowTertiary.transform, Vector2.zero, OpenGacha, panelButtonSprite);
+            chestBtn.GetComponent<Image>().color = DesertTheme.AccentTurquoise;
+            chestBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            var dailyBtn = ButtonGo("Daily", rowTertiary.transform, Vector2.zero, OpenDaily, panelButtonSprite);
+            dailyBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+
             BuildMeta(root.transform);
             BuildBoardSelectPanel(root.transform);
             BuildFightResultPanel(root.transform);
             BuildOnboardingOverlay(root.transform);
             BuildTutorialOverlay(root.transform);
+            BuildShopPanel(root.transform);
+            BuildCollectionPanel(root.transform);
+            BuildGachaPanel(root.transform);
+            BuildDailyRewardPanel(root.transform);
+            BuildPrestigePanel(root.transform);
         }
 
         private void BuildOnboardingOverlay(Transform root)
@@ -759,6 +784,7 @@ namespace MergeSurvivor.UI
             contRt.anchoredPosition = Vector2.zero;
             _fightContinueButton.GetComponent<Image>().color = DesertTheme.AccentGold;
             _fightContinueButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            AddFightResultActions(card.transform);
             _fightResultPanel.SetActive(false);
         }
 
@@ -851,6 +877,9 @@ namespace MergeSurvivor.UI
             MetaButton(metaList.transform, "Upgrade Spawn Capacity", UpgradeSpawn);
             MetaButton(metaList.transform, "Upgrade Starting Chance", UpgradeChance);
             MetaButton(metaList.transform, "Unlock Next Board", UnlockNextBoard);
+            var prestigeBtn = MetaButton(metaList.transform, "Prestige (Rebirth)", OpenPrestige);
+            prestigeBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
+            prestigeBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
             MetaButton(metaList.transform, "Caravan Routes", () => { CloseMeta(); OpenBoardSelect(); });
             var returnBtn = MetaButton(metaList.transform, "Return", CloseMeta);
             returnBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
@@ -1040,6 +1069,8 @@ namespace MergeSurvivor.UI
         private void StartRunInternal()
         {
             _session.ResetRun();
+            _session.GrantStartingBonuses();
+            _revivesUsedThisRun = 0;
             for (var i = 0; i < 6; i++) _session.TrySpawn();
             _isInRun = true;
             _audio.PlayMusic(AudioManager.MusicGameplay);
@@ -1154,6 +1185,7 @@ namespace MergeSurvivor.UI
             if (_playerPowerLabel != null) _playerPowerLabel.text = "0";
             if (_enemyPowerLabel != null) _enemyPowerLabel.text = "0";
             if (_fightContinueButton != null) _fightContinueButton.SetActive(false);
+            HideFightResultActions();
             _fightResultPanel.SetActive(true);
 
             yield return new WaitForSecondsRealtime(0.25f);
@@ -1213,6 +1245,7 @@ namespace MergeSurvivor.UI
             _fightResultTitle.rectTransform.localScale = Vector3.one;
 
             if (_fightContinueButton != null) _fightContinueButton.SetActive(true);
+            ConfigureFightResultActions(r.Won);
             _resolvingFight = false;
         }
 
@@ -1399,6 +1432,7 @@ namespace MergeSurvivor.UI
                 ? "No board configured."
                 : $"Board {(_session.CurrentBoardIndex + 1)}/{_session.UnlockedBoardCount}: {currentBoard.DisplayName} ({_session.CurrentEnemyArchetype?.DisplayName ?? "No Archetype"})";
             RefreshRunStateUI();
+            RefreshMonetizationUI();
         }
 
         private void SaveAccount()

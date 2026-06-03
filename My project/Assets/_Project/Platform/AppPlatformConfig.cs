@@ -20,6 +20,16 @@ namespace MergeSurvivor.Platform
         [SerializeField] private int androidBundleVersionCode = 1;
         [Tooltip("Google Play in-app product ID (consumable or non-consumable)")]
         [SerializeField] private string billingProductPremiumPack = "premium_pack_01";
+        [Tooltip("Real-money coin pack product IDs. Must match products created in Google Play Console and the CoinPackCatalog. These are the IDs registered with the store at startup.")]
+        [SerializeField] private string[] coinPackProductIds =
+        {
+            "gems_pouch",
+            "gems_stack",
+            "gems_chest",
+            "gems_vault",
+            "gems_hoard",
+            "starter_bundle"
+        };
         [Tooltip("AdMob rewarded ad unit ID (ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY)")]
         [SerializeField] private string adUnitRewarded = "ca-app-pub-xxxx/rewarded";
         [Tooltip("AdMob interstitial ad unit ID")]
@@ -32,6 +42,7 @@ namespace MergeSurvivor.Platform
         public string AndroidBundleVersion => androidBundleVersion;
         public int AndroidBundleVersionCode => androidBundleVersionCode;
         public string BillingProductPremiumPack => billingProductPremiumPack;
+        public string[] CoinPackProductIds => coinPackProductIds;
         public string AdUnitRewarded => adUnitRewarded;
         public string AdUnitInterstitial => adUnitInterstitial;
         public string FirebaseProject => firebaseProject;

@@ -19,10 +19,14 @@ namespace MergeSurvivor.Gameplay
         private readonly EconomyTables _economy;
         private readonly IInventoryService _inventory;
         private readonly IProgressionService _progression;
-        private readonly IAdsService _ads;
         private readonly IAnalyticsService _analytics;
+        private readonly ICollectionService _collection;
+        private readonly IPrestigeService _prestige;
         private readonly MergeResolver _resolver;
         private int _wave = 1;
+
+        /// <summary>Bonus gems spawned onto the board when a run is revived (the payoff for the revive ad).</summary>
+        private const int ReviveSpawnCount = 4;
 
         public GameSession(
             BoardState board,
@@ -35,8 +39,10 @@ namespace MergeSurvivor.Gameplay
             EconomyTables economy,
             IInventoryService inventory,
             IProgressionService progression,
-            IAdsService ads,
-            IAnalyticsService analytics)
+            IAdsService ads, // reserved for future in-session ads (e.g. inter-wave interstitial); not stored
+            IAnalyticsService analytics,
+            ICollectionService collection = null,
+            IPrestigeService prestige = null)
         {
             Board = board;
             _boardCatalog = boardCatalog;
@@ -48,19 +54,39 @@ namespace MergeSurvivor.Gameplay
             _economy = economy;
             _inventory = inventory;
             _progression = progression;
-            _ads = ads;
             _analytics = analytics;
+            _collection = collection;
+            _prestige = prestige;
             _resolver = new MergeResolver(items);
             _progression.EnsureBoardState(_boardCatalog?.Count ?? 0);
         }
 
         public BoardState Board { get; }
 
+        /// <summary>The reward granted by the most recent winning fight (used to "double" via a rewarded ad).</summary>
+        public GameReward LastWinReward { get; private set; }
+
+        // Pay-to-win multipliers: permanent prestige × equipped-character/collection bonuses.
+        private float PrestigeMultiplier => _prestige?.Multiplier() ?? 1f;
+        private float SquadBonusMultiplier => 1f + (_collection?.SquadPowerPercent() ?? 0f);
+        private float GoldGainMultiplier => 1f + (_collection?.GoldGainPercent() ?? 0f);
+        private float MergeRewardMultiplierBonus => 1f + (_collection?.MergeRewardPercent() ?? 0f);
+
         /// <summary>Reset run state for current session only: clear board and set wave to 1. Progression (boards, upgrades) is unchanged.</summary>
         public void ResetRun()
         {
             Board.Clear();
             _wave = 1;
+        }
+
+        /// <summary>Grant per-run starting bonuses (e.g. the equipped character's starting gold). Call when a new run begins.</summary>
+        public void GrantStartingBonuses()
+        {
+            var startingGold = _collection?.StartingGoldFlat() ?? 0;
+            if (startingGold > 0)
+            {
+                _inventory.Add(new GameReward { SoftCurrency = startingGold });
+            }
         }
 
         public int CurrentWave => _wave;
@@ -131,8 +157,15 @@ namespace MergeSurvivor.Gameplay
         public bool TrySpawn()
         {
             var boardSpawnBonus = CurrentBoard?.SpawnCapacityBonus ?? 0;
-            var cap = _spawnConfig.BaseSpawnCapacity + _progression.SpawnCapacityBonus() + boardSpawnBonus;
+            var characterSpawnBonus = _collection?.ExtraSpawnCapacity() ?? 0;
+            var cap = _spawnConfig.BaseSpawnCapacity + _progression.SpawnCapacityBonus() + boardSpawnBonus + characterSpawnBonus;
             if (Board.OccupiedCount() >= cap) return false;
+            return SpawnOne();
+        }
+
+        /// <summary>Place one tier-1 gem in the first empty cell, ignoring spawn capacity. Returns false if the board is full or there are no items.</summary>
+        private bool SpawnOne()
+        {
             if (!Board.TryGetFirstEmpty(out var cell)) return false;
             var tier1 = _items.GetTierOneItems();
             if (tier1.Count == 0) return false;
@@ -147,9 +180,10 @@ namespace MergeSurvivor.Gameplay
             if (result.Success)
             {
                 var mergeMultiplier = CurrentBoard?.MergeRewardMultiplier ?? 1f;
+                var baseReward = (_economy.MergeSoftBase + result.UpgradedTier * _economy.MergeTierMultiplier) * mergeMultiplier;
                 _inventory.Add(new GameReward
                 {
-                    SoftCurrency = UnityEngine.Mathf.RoundToInt((_economy.MergeSoftBase + result.UpgradedTier * _economy.MergeTierMultiplier) * mergeMultiplier)
+                    SoftCurrency = UnityEngine.Mathf.RoundToInt(baseReward * MergeRewardMultiplierBonus * GoldGainMultiplier * PrestigeMultiplier)
                 });
             }
             return result;
@@ -166,7 +200,8 @@ namespace MergeSurvivor.Gameplay
                 var item = _items.GetById(id);
                 if (item != null) total += item.CombatPower;
             }
-            return total;
+            // Apply permanent prestige + equipped-character/collection multipliers.
+            return UnityEngine.Mathf.RoundToInt(total * PrestigeMultiplier * SquadBonusMultiplier);
         }
 
         public CombatResult Fight()
@@ -184,21 +219,44 @@ namespace MergeSurvivor.Gameplay
             {
                 _wave++;
                 if (_wave > _progression.Data.HighestWave) _progression.Data.HighestWave = _wave;
-                _inventory.Add(new GameReward
+                var reward = new GameReward
                 {
-                    SoftCurrency = _combatConfig.WinSoft,
+                    SoftCurrency = UnityEngine.Mathf.RoundToInt(_combatConfig.WinSoft * GoldGainMultiplier * PrestigeMultiplier),
                     ProgressionResource = _combatConfig.WinResource
-                });
+                };
+                _inventory.Add(reward);
+                LastWinReward = reward;
                 _analytics.TrackEvent("fight_win", new Dictionary<string, object> { { "wave", _wave } });
             }
             else
             {
-                // TODO: revive via rewarded ad or premium.
-                _ads.ShowRewarded("revive_hook", _ => { });
+                // Loss: the UI decides whether to offer a rewarded-ad revive (see Revive) or end the run.
                 _analytics.TrackEvent("fight_loss");
             }
             _progression.Save();
             return result;
+        }
+
+        /// <summary>Grant a reward again (e.g. doubling the last win via a rewarded ad).</summary>
+        public void GrantBonusReward(GameReward reward)
+        {
+            _inventory.Add(reward);
+        }
+
+        /// <summary>
+        /// Continue the current run after a loss without resetting wave/board, and spawn a few bonus
+        /// gems so the next fight is winnable. Returns how many gems were spawned.
+        /// </summary>
+        public int Revive()
+        {
+            var spawned = 0;
+            for (var i = 0; i < ReviveSpawnCount; i++)
+            {
+                if (!SpawnOne()) break;
+                spawned++;
+            }
+            _analytics.TrackEvent("revive", new Dictionary<string, object> { { "wave", _wave }, { "spawned", spawned } });
+            return spawned;
         }
 
         private void TrackEnemyModifiers(

@@ -9,6 +9,17 @@ Unity Android project for the merge/fight/meta loop. Code lives under **`Assets/
 - **Enemy archetypes and modifiers**: Ordered modifiers with stack rules (Armor, Rage, Heal); analytics event per applied modifier.
 - **Balance simulator**: Offline simulation with Standard / Onboarding / Late-Game profiles; dry-run with suggested (damped) deltas; outputs in `Logs/`.
 - **Platform**: Billing, Ads, Analytics, RemoteConfig, CloudSave **stubs** in place; real SDKs wired via scripting defines (`MERGE_SURVIVOR_USE_IAP`, `MERGE_SURVIVOR_USE_ADMOB`, `MERGE_SURVIVOR_USE_FIREBASE`).
+- **Meta & monetization (F2P layer)**: Gem store with real-money coin packs (IAP), Lucky Chest gacha (rarity + pity + disclosed odds), a 16-hero collection (equip for passive buffs, buy with Gems or craft with shards), daily reward calendar, prestige (permanent compounding multiplier), and rewarded-ad surfaces (double-win, free gems, free spin, revive). All run in-editor via the platform stubs; real AdMob/Billing flip on via the scripting defines. See `MONETIZATION` notes below.
+
+### Meta & monetization details
+
+- **Currency**: `Soft` = Gold, `Premium` = **Gems** (the pay-to-win sink), `Resource` = progression.
+- **Services** (all pure logic, headless-testable, in `Assets/_Project/Meta`): `CollectionService`, `GachaService`, `DailyRewardService`, `PrestigeService`, `StorefrontService`. Data/configs in `Assets/_Project/Data` (`CharacterCollection.cs`, `MonetizationConfigs.cs`); authorable as ScriptableObjects under `Resources/MergeSurvivorData/`, with runtime fallbacks in `PrototypeBootstrap.Monetization.cs` so it works with no authored assets.
+- **P2W is "strong but capped"**: Gems buy heroes/boosts/coin packs and prestige compounds, but free players progress via grind + rewarded ads. Prestige multiplier is hard-capped (`PrestigeConfig.maxMultiplier`).
+- **IAP grant flow**: `IStoreService.PurchaseCompleted` (productId) → `StorefrontService.GrantPurchase` adds Gems (+bonus% and any bundle hero). The stub fires this instantly so purchases are testable in-editor.
+- **Rewarded-ad placements**: `AdPlacements.{DoubleWinReward, FreeGems, FreeSpin, Revive, DailyDouble}`; free-gems/free-spin are daily-capped via `DailyRewardService`.
+- **Store policy**: gacha odds are displayed in the Lucky Chest panel (Google Play loot-box disclosure requirement).
+- **Tests**: `Tests/MonetizationTests.cs` (run under **PlayMode** — the `MergeSurvivor.Tests` asmdef is a PlayMode test assembly) covers gacha pity/odds, collection unlock/craft/bonus, daily streak + ad caps (culture-safe UTC dates), prestige cap, and storefront grants.
 
 ## Production phases (5–10): done vs TODO
 
@@ -37,6 +48,9 @@ See `ASSETS.md` for the full asset manifest and `Tools/generate_audio.py` /
 **Still TODO**
 
 - Phase E: replace stubs with real implementations (Play Billing, AdMob, Firebase Analytics/Remote Config).
+- **Enable AdMob**: import the [Google Mobile Ads Unity plugin](https://developers.google.com/admob/unity/quick-start), add the `MERGE_SURVIVOR_USE_ADMOB` define, set real rewarded/interstitial unit IDs in `AppPlatformConfig`.
+- **Enable IAP**: add the In-App Purchasing package, add `UnityEngine.Purchasing` to `MergeSurvivor.Platform.asmdef`, rename `Platform/StoreServiceGooglePlay.cs.off` → `.cs`, add `MERGE_SURVIVOR_USE_IAP`, uncomment the factory branch in `PlatformServiceFactory.CreateStore`. Create the coin-pack products in Play Console matching `AppPlatformConfig.CoinPackProductIds` (`gems_pouch`, `gems_stack`, `gems_chest`, `gems_vault`, `gems_hoard`, `starter_bundle`).
+- Complete Play Console **Ads declaration**, **Data safety**, and **gacha odds disclosure** (see `RELEASE_CHECKLIST.md`).
 - Add `google-services.json` and production product/ad unit IDs (see `RELEASE_CHECKLIST.md`).
 - Apply recommended audio import settings on first editor open (music → Streaming; see `ASSETS.md`).
 - Optional: consolidate default board/enemy/item data (currently fallbacks in `PrototypeBootstrap`, `ContentPipeline`, and `BalanceSimulationTool`) into single source (e.g. seeded Resources or Content Pipeline only).
