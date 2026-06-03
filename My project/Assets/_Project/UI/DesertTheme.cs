@@ -58,15 +58,16 @@ namespace MergeSurvivor.UI
         public static readonly Color CameraBg = new(0.06f, 0.04f, 0.03f, 1f);
 
         // === LAYOUT CONSTANTS ===
-        public const int FontSizeTitle = 26;
-        public const int FontSizeHeading = 20;
-        public const int FontSizeBody = 16;
-        public const int FontSizeCaption = 13;
-        public const int FontSizeHud = 18;
-        public const float ButtonHeight = 48f;
+        public const int FontSizeTitle = 44;
+        public const int FontSizeHeading = 32;
+        public const int FontSizeBody = 26;
+        public const int FontSizeCaption = 20;
+        public const int FontSizeHud = 26;
+        public const float ButtonHeight = 64f;
         public const float ButtonWidth = 200f;
-        public const float GridCellSize = 75f;
-        public const float GridSpacing = 6f;
+        // Board fills the width of a 1080-reference portrait canvas: 4*216 + 3*14 = 906.
+        public const float GridCellSize = 216f;
+        public const float GridSpacing = 14f;
         public const int GridColumns = 4;
         public const float PanelCornerRadius = 12f;
 

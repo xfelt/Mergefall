@@ -48,6 +48,7 @@ namespace MergeSurvivor.UI
         private AudioSource _uiAudio;
         private AudioManager _audio;
         private Image _boardBackgroundImage;
+        private Image _backdropImage;
         private Image _enemyPortraitImage;
         private ItemDatabase _items;
         private BoardCatalog _boardCatalog;
@@ -135,12 +136,14 @@ namespace MergeSurvivor.UI
             if (_items == null)
             {
                 _items = ScriptableObject.CreateInstance<ItemDatabase>();
-                var i1 = ScriptableObject.CreateInstance<ItemDefinition>(); i1.ConfigureRuntime("pawn_t1", "Pawn", "pawn", 1, 5);
-                var i2 = ScriptableObject.CreateInstance<ItemDefinition>(); i2.ConfigureRuntime("pawn_t2", "Knight", "pawn", 2, 12);
-                var i3 = ScriptableObject.CreateInstance<ItemDefinition>(); i3.ConfigureRuntime("pawn_t3", "Rook", "pawn", 3, 24);
-                var i4 = ScriptableObject.CreateInstance<ItemDefinition>(); i4.ConfigureRuntime("pawn_t4", "Queen", "pawn", 4, 45);
-                var i5 = ScriptableObject.CreateInstance<ItemDefinition>(); i5.ConfigureRuntime("pawn_t5", "King", "pawn", 5, 85);
-                var i6 = ScriptableObject.CreateInstance<ItemDefinition>(); i6.ConfigureRuntime("pawn_t6", "Emperor", "pawn", 6, 160);
+                // Gem tiers: names match the crystal art and the "merge crystals" fiction,
+                // and read by colour (green->blue->purple->gold->red->white).
+                var i1 = ScriptableObject.CreateInstance<ItemDefinition>(); i1.ConfigureRuntime("pawn_t1", "Emerald", "pawn", 1, 5);
+                var i2 = ScriptableObject.CreateInstance<ItemDefinition>(); i2.ConfigureRuntime("pawn_t2", "Sapphire", "pawn", 2, 12);
+                var i3 = ScriptableObject.CreateInstance<ItemDefinition>(); i3.ConfigureRuntime("pawn_t3", "Amethyst", "pawn", 3, 24);
+                var i4 = ScriptableObject.CreateInstance<ItemDefinition>(); i4.ConfigureRuntime("pawn_t4", "Topaz", "pawn", 4, 45);
+                var i5 = ScriptableObject.CreateInstance<ItemDefinition>(); i5.ConfigureRuntime("pawn_t5", "Ruby", "pawn", 5, 85);
+                var i6 = ScriptableObject.CreateInstance<ItemDefinition>(); i6.ConfigureRuntime("pawn_t6", "Diamond", "pawn", 6, 160);
                 _items.ConfigureRuntime(new List<ItemDefinition> { i1, i2, i3, i4, i5, i6 });
             }
             else
@@ -244,6 +247,13 @@ namespace MergeSurvivor.UI
             var canvas = EnsureCanvas();
             var root = Ui("Root", canvas.transform);
             Stretch(root.GetComponent<RectTransform>());
+
+            // Full-screen themed backdrop so empty areas read as desert atmosphere, not black.
+            var backdrop = Ui("Backdrop", root.transform);
+            Stretch(backdrop.GetComponent<RectTransform>());
+            _backdropImage = backdrop.AddComponent<Image>();
+            _backdropImage.color = DesertTheme.BgPrimary;
+            _backdropImage.raycastTarget = false;
 
             var hudBar = Ui("HudBar", root.transform);
             var hudBarRt = hudBar.GetComponent<RectTransform>();
@@ -349,19 +359,22 @@ namespace MergeSurvivor.UI
             hudRt.offsetMax = new Vector2(-16, 0);
             _hud.color = DesertTheme.TextSecondary;
 
-            _status = Label("Status", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -96), DesertTheme.FontSizeCaption);
-            _status.color = DesertTheme.TextSecondary;
+            _status = Label("Status", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -150), DesertTheme.FontSizeBody);
+            _status.color = DesertTheme.TextPrimary;
             var statusRt = _status.GetComponent<RectTransform>();
-            statusRt.sizeDelta = new Vector2(-32, 22);
+            statusRt.sizeDelta = new Vector2(-32, 40);
 
-            _boardHud = Label("BoardHUD", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -116), DesertTheme.FontSizeCaption);
+            _boardHud = Label("BoardHUD", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -198), DesertTheme.FontSizeCaption);
             _boardHud.color = DesertTheme.TextSecondary;
 
             var boardContainer = Ui("BoardContainer", root.transform);
             var containerRt = boardContainer.GetComponent<RectTransform>();
+            // Square board sized to fill the canvas width (4 cells + 3 gaps), nudged up
+            // to leave room for the bottom action bar.
+            var boardSide = DesertTheme.GridColumns * DesertTheme.GridCellSize + (DesertTheme.GridColumns - 1) * DesertTheme.GridSpacing;
             containerRt.anchorMin = containerRt.anchorMax = new Vector2(0.5f, 0.5f);
-            containerRt.sizeDelta = new Vector2(DesertTheme.GridColumns * (DesertTheme.GridCellSize + DesertTheme.GridSpacing), DesertTheme.GridColumns * (DesertTheme.GridCellSize + DesertTheme.GridSpacing));
-            containerRt.anchoredPosition = new Vector2(0, 10);
+            containerRt.sizeDelta = new Vector2(boardSide, boardSide);
+            containerRt.anchoredPosition = new Vector2(0, 60);
 
             var boardBg = Ui("BoardBg", boardContainer.transform);
             Stretch(boardBg.GetComponent<RectTransform>());
@@ -394,7 +407,9 @@ namespace MergeSurvivor.UI
                 pieceImage.color = PlaceholderArt.Tier1;
                 pieceImage.preserveAspect = true;
                 pieceImage.enabled = false;
-                var txt = Label("L", co.transform, Vector2.zero, Vector2.one, Vector2.zero, 11);
+                var txt = Label("L", co.transform, new Vector2(0f, 0f), new Vector2(1f, 0.30f), Vector2.zero, DesertTheme.FontSizeCaption);
+                txt.fontStyle = FontStyles.Bold;
+                txt.color = DesertTheme.TextPrimary;
                 txt.transform.SetAsLastSibling();
                 var cv = co.AddComponent<CellView>();
                 cv.Bind(x, y, txt, pieceImage, itemVisualCatalog, mergeVfxPrefab);
@@ -404,22 +419,44 @@ namespace MergeSurvivor.UI
                 _cells.Add(cv);
             }
 
-            _startRunButton = ButtonGo("Start Run", root.transform, new Vector2(0, -200), OnStartRun, panelButtonSprite);
+            // Bottom action bar: two auto-laid-out rows so buttons never overlap and
+            // expand to share the width. Run-state toggles which buttons are visible
+            // (RefreshRunStateUI); layout groups skip inactive children automatically.
+            var actionArea = Ui("ActionArea", root.transform);
+            var aaRt = actionArea.GetComponent<RectTransform>();
+            aaRt.anchorMin = new Vector2(0.04f, 0f);
+            aaRt.anchorMax = new Vector2(0.96f, 0f);
+            aaRt.pivot = new Vector2(0.5f, 0f);
+            aaRt.sizeDelta = new Vector2(0, 158);
+            aaRt.anchoredPosition = new Vector2(0, 44);
+            var aaLayout = actionArea.AddComponent<VerticalLayoutGroup>();
+            aaLayout.spacing = 16;
+            aaLayout.childAlignment = TextAnchor.LowerCenter;
+            aaLayout.childControlWidth = true;
+            aaLayout.childControlHeight = true;
+            aaLayout.childForceExpandWidth = true;
+            aaLayout.childForceExpandHeight = false;
+
+            var rowPrimary = ButtonRow("RowPrimary", actionArea.transform);
+            var rowSecondary = ButtonRow("RowSecondary", actionArea.transform);
+
+            _startRunButton = ButtonGo("Start Run", rowPrimary.transform, Vector2.zero, OnStartRun, panelButtonSprite);
             _startRunButton.GetComponent<Image>().color = DesertTheme.AccentGold;
             _startRunButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
-            _endRunButton = ButtonGo("End Run", root.transform, new Vector2(0, -200), OnEndRun, panelButtonSprite);
-            _endRunButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
-            _spawnButton = ButtonGo("Spawn Item", root.transform, new Vector2(-150, -200), OnSpawn, panelButtonSprite);
+            _spawnButton = ButtonGo("Spawn Gem", rowPrimary.transform, Vector2.zero, OnSpawn, panelButtonSprite);
             _spawnButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
-            _fightButton = ButtonGo("Fight", root.transform, new Vector2(0, -200), OnFight, panelButtonSprite);
+            _fightButton = ButtonGo("Fight", rowPrimary.transform, Vector2.zero, OnFight, panelButtonSprite);
             _fightButton.GetComponent<Image>().color = DesertTheme.BtnDanger;
-            var metaBtn = ButtonGo("Meta Hub", root.transform, new Vector2(150, -200), OpenMeta, panelButtonSprite);
+
+            var metaBtn = ButtonGo("Meta Hub", rowSecondary.transform, Vector2.zero, OpenMeta, panelButtonSprite);
             metaBtn.GetComponent<Image>().color = DesertTheme.AccentTurquoise;
             metaBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
-            _nextBoardButton = ButtonGo("Next Board", root.transform, new Vector2(-110, -260), OnNextBoard, panelButtonSprite);
+            _nextBoardButton = ButtonGo("Next Board", rowSecondary.transform, Vector2.zero, OnNextBoard, panelButtonSprite);
             _nextBoardButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
-            _boardSelectButton = ButtonGo("Board Select", root.transform, new Vector2(110, -260), () => OpenBoardSelect(forStartRun: false), panelButtonSprite);
+            _boardSelectButton = ButtonGo("Board Select", rowSecondary.transform, Vector2.zero, () => OpenBoardSelect(forStartRun: false), panelButtonSprite);
             _boardSelectButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+            _endRunButton = ButtonGo("End Run", rowSecondary.transform, Vector2.zero, OnEndRun, panelButtonSprite);
+            _endRunButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
             BuildMeta(root.transform);
             BuildBoardSelectPanel(root.transform);
             BuildFightResultPanel(root.transform);
@@ -435,22 +472,50 @@ namespace MergeSurvivor.UI
             var r = _onboardingOverlay.GetComponent<RectTransform>();
             Stretch(r);
 
-            var title = Label("Title", _onboardingOverlay.transform, new Vector2(0.5f, 0.80f), new Vector2(0.5f, 0.80f), Vector2.zero, 30);
+            // Centered card so the title + rules always read, regardless of aspect ratio.
+            var card = Ui("Card", _onboardingOverlay.transform);
+            var cardRt = card.GetComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRt.sizeDelta = new Vector2(880, 1020);
+            cardRt.anchoredPosition = Vector2.zero;
+            var cardBg = card.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { cardBg.sprite = panelBackgroundSprite; cardBg.type = Image.Type.Sliced; cardBg.color = Color.white; }
+            else cardBg.color = DesertTheme.PanelMid;
+
+            var title = Label("Title", card.transform, new Vector2(0.5f, 0.92f), new Vector2(0.5f, 0.92f), Vector2.zero, 64);
             title.text = "Mergefall";
             title.color = DesertTheme.AccentGold;
-            var subtitle = Label("Subtitle", _onboardingOverlay.transform, new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, DesertTheme.FontSizeBody);
+            title.GetComponent<RectTransform>().sizeDelta = new Vector2(820, 90);
+            var subtitle = Label("Subtitle", card.transform, new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 30);
             subtitle.text = "Board Quest";
             subtitle.color = DesertTheme.TextSecondary;
-            var body = Label("Body", _onboardingOverlay.transform, new Vector2(0.5f, 0.52f), new Vector2(0.5f, 0.52f), Vector2.zero, DesertTheme.FontSizeCaption);
-            body.text = "\u2726 Merge 3 identical crystals to forge a stronger one\n\u2694 Grow your caravan power, then tap Fight\n\u26FA Visit the Merchant Tent to upgrade";
-            body.GetComponent<RectTransform>().sizeDelta = new Vector2(460, 110);
+            subtitle.GetComponent<RectTransform>().sizeDelta = new Vector2(820, 44);
+
+            var howTo = Label("HowTo", card.transform, new Vector2(0.5f, 0.70f), new Vector2(0.5f, 0.70f), Vector2.zero, 26);
+            howTo.text = "How to play";
+            howTo.color = DesertTheme.AccentTurquoise;
+            howTo.GetComponent<RectTransform>().sizeDelta = new Vector2(820, 40);
+
+            var body = Label("Body", card.transform, new Vector2(0.5f, 0.40f), new Vector2(0.5f, 0.40f), Vector2.zero, 26, TextAlignmentOptions.TopLeft);
+            body.text =
+                "1.  Merge 3 matching gems to forge a stronger gem.\n\n" +
+                "2.  Each gem adds to your squad power.\n\n" +
+                "3.  Tap FIGHT to clash with the incoming wave.\n\n" +
+                "4.  Spend the loot at the Merchant Tent to grow.";
+            body.GetComponent<RectTransform>().sizeDelta = new Vector2(720, 360);
             body.color = DesertTheme.TextPrimary;
-            var playBtn = ButtonGo("Begin Journey", _onboardingOverlay.transform, new Vector2(0, -80), () =>
+
+            var playBtn = ButtonGo("Begin Journey", card.transform, Vector2.zero, () =>
             {
                 PlayerPrefs.SetInt(OnboardingDoneKey, 1);
                 PlayerPrefs.Save();
                 _onboardingOverlay.SetActive(false);
             }, panelButtonSprite);
+            var playRt = playBtn.GetComponent<RectTransform>();
+            playRt.anchorMin = playRt.anchorMax = new Vector2(0.5f, 0.08f);
+            playRt.sizeDelta = new Vector2(520, 96);
+            playRt.anchoredPosition = Vector2.zero;
             playBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
             playBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
             _onboardingOverlay.SetActive(false);
@@ -482,8 +547,8 @@ namespace MergeSurvivor.UI
             // Bottom banner with instruction text + Next / Skip.
             var banner = Ui("TutorialBanner", _tutorialOverlay.transform);
             var bannerRt = banner.GetComponent<RectTransform>();
-            bannerRt.anchorMin = new Vector2(0.05f, 0.05f);
-            bannerRt.anchorMax = new Vector2(0.95f, 0.27f);
+            bannerRt.anchorMin = new Vector2(0.06f, 0.17f);
+            bannerRt.anchorMax = new Vector2(0.94f, 0.40f);
             bannerRt.offsetMin = bannerRt.offsetMax = Vector2.zero;
             var bannerBg = banner.AddComponent<Image>();
             if (panelBackgroundSprite != null) { bannerBg.sprite = panelBackgroundSprite; bannerBg.type = Image.Type.Sliced; bannerBg.color = Color.white; }
@@ -523,8 +588,8 @@ namespace MergeSurvivor.UI
 
             var steps = new (string label, string text, System.Func<List<RectTransform>> targets)[]
             {
-                ("Step 1 of 3", "Tap a piece, then tap a matching piece to swap them. Bring identical crystals together!", GetMergePairTargets),
-                ("Step 2 of 3", "Line up 3 identical crystals to merge them into a stronger tier — that grows your squad power.", GetBoardTargets),
+                ("Step 1 of 3", "Tap a gem, then tap a matching gem to swap them. Bring identical gems together!", GetMergePairTargets),
+                ("Step 2 of 3", "Line up 3 identical gems to merge them into a stronger tier — that grows your squad power.", GetBoardTargets),
                 ("Step 3 of 3", "When your squad is ready, tap the FIGHT button to battle the incoming wave!", GetFightButtonTargets),
             };
 
@@ -638,20 +703,27 @@ namespace MergeSurvivor.UI
 
         private void BuildFightResultPanel(Transform parent)
         {
+            // Full-screen modal: a dark scrim occludes the board, a centered card holds the result.
             _fightResultPanel = Ui("FightResultPanel", parent);
-            var bg = _fightResultPanel.AddComponent<Image>();
-            if (panelBackgroundSprite != null) { bg.sprite = panelBackgroundSprite; bg.type = Image.Type.Sliced; bg.color = Color.white; }
-            else bg.color = DesertTheme.PanelDark;
-            var r = _fightResultPanel.GetComponent<RectTransform>();
-            r.anchorMin = new Vector2(0.08f, 0.22f);
-            r.anchorMax = new Vector2(0.92f, 0.78f);
-            r.offsetMin = r.offsetMax = Vector2.zero;
+            Stretch(_fightResultPanel.GetComponent<RectTransform>());
+            var scrim = _fightResultPanel.AddComponent<Image>();
+            scrim.color = DesertTheme.BgOverlay;
 
-            _fightResultTitle = Label("ResultTitle", _fightResultPanel.transform, new Vector2(0.5f, 0.90f), new Vector2(0.5f, 0.90f), Vector2.zero, 32);
-            var enemyPortraitGo = Ui("EnemyPortrait", _fightResultPanel.transform);
+            var card = Ui("FightCard", _fightResultPanel.transform);
+            var cardRt = card.GetComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(0.07f, 0.20f);
+            cardRt.anchorMax = new Vector2(0.93f, 0.80f);
+            cardRt.offsetMin = cardRt.offsetMax = Vector2.zero;
+            var bg = card.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { bg.sprite = panelBackgroundSprite; bg.type = Image.Type.Sliced; bg.color = Color.white; }
+            else bg.color = DesertTheme.PanelMid;
+
+            _fightResultTitle = Label("ResultTitle", card.transform, new Vector2(0.5f, 0.91f), new Vector2(0.5f, 0.91f), Vector2.zero, DesertTheme.FontSizeTitle);
+            _fightResultTitle.GetComponent<RectTransform>().sizeDelta = new Vector2(720, 72);
+            var enemyPortraitGo = Ui("EnemyPortrait", card.transform);
             var enemyPortraitRt = enemyPortraitGo.GetComponent<RectTransform>();
             enemyPortraitRt.anchorMin = enemyPortraitRt.anchorMax = new Vector2(0.5f, 0.74f);
-            enemyPortraitRt.sizeDelta = new Vector2(86, 86);
+            enemyPortraitRt.sizeDelta = new Vector2(150, 150);
             enemyPortraitRt.anchoredPosition = Vector2.zero;
             _enemyPortraitImage = enemyPortraitGo.AddComponent<Image>();
             _enemyPortraitImage.preserveAspect = true;
@@ -659,15 +731,16 @@ namespace MergeSurvivor.UI
             _enemyPortraitImage.enabled = false;
 
             // Power-race bars: "Your Squad" (gold) vs the wave (red).
-            (_playerBarFill, _playerPowerLabel) = MakePowerBar(_fightResultPanel.transform, 0.55f, "Your Squad", DesertTheme.AccentGold);
-            (_enemyBarFill, _enemyPowerLabel) = MakePowerBar(_fightResultPanel.transform, 0.42f, "The Wave", DesertTheme.BtnDanger);
+            (_playerBarFill, _playerPowerLabel) = MakePowerBar(card.transform, 0.55f, "Your Squad", DesertTheme.AccentGold);
+            (_enemyBarFill, _enemyPowerLabel) = MakePowerBar(card.transform, 0.44f, "The Wave", DesertTheme.BtnDanger);
 
-            _fightResultSubtitle = Label("ResultSubtitle", _fightResultPanel.transform, new Vector2(0.5f, 0.30f), new Vector2(0.5f, 0.30f), Vector2.zero, DesertTheme.FontSizeHeading);
-            _fightResultRewards = Label("ResultRewards", _fightResultPanel.transform, new Vector2(0.5f, 0.19f), new Vector2(0.5f, 0.19f), Vector2.zero, DesertTheme.FontSizeBody);
+            _fightResultSubtitle = Label("ResultSubtitle", card.transform, new Vector2(0.5f, 0.31f), new Vector2(0.5f, 0.31f), Vector2.zero, DesertTheme.FontSizeHeading);
+            _fightResultSubtitle.GetComponent<RectTransform>().sizeDelta = new Vector2(740, 48);
+            _fightResultRewards = Label("ResultRewards", card.transform, new Vector2(0.5f, 0.23f), new Vector2(0.5f, 0.23f), Vector2.zero, DesertTheme.FontSizeBody);
             _fightResultRewards.color = DesertTheme.AccentGold;
-            _fightResultRewards.GetComponent<RectTransform>().sizeDelta = new Vector2(320, 32);
+            _fightResultRewards.GetComponent<RectTransform>().sizeDelta = new Vector2(740, 40);
 
-            _fightContinueButton = ButtonGo("Continue", _fightResultPanel.transform, new Vector2(0, -78), () =>
+            _fightContinueButton = ButtonGo("Continue", card.transform, Vector2.zero, () =>
             {
                 if (_resolvingFight) return; // ignore taps while the sequence is animating
                 _fightResultPanel.SetActive(false);
@@ -677,6 +750,10 @@ namespace MergeSurvivor.UI
                     EndRun();
                 }
             }, panelButtonSprite);
+            var contRt = _fightContinueButton.GetComponent<RectTransform>();
+            contRt.anchorMin = contRt.anchorMax = new Vector2(0.5f, 0.10f);
+            contRt.sizeDelta = new Vector2(480, 92);
+            contRt.anchoredPosition = Vector2.zero;
             _fightContinueButton.GetComponent<Image>().color = DesertTheme.AccentGold;
             _fightContinueButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
             _fightResultPanel.SetActive(false);
@@ -687,9 +764,9 @@ namespace MergeSurvivor.UI
         {
             var row = Ui($"PowerBar_{caption}", parent);
             var rowRt = row.GetComponent<RectTransform>();
-            rowRt.anchorMin = new Vector2(0.10f, anchorY);
-            rowRt.anchorMax = new Vector2(0.90f, anchorY);
-            rowRt.sizeDelta = new Vector2(0, 46);
+            rowRt.anchorMin = new Vector2(0.08f, anchorY);
+            rowRt.anchorMax = new Vector2(0.92f, anchorY);
+            rowRt.sizeDelta = new Vector2(0, 84);
             rowRt.anchoredPosition = Vector2.zero;
 
             var caps = Label("Caption", row.transform, new Vector2(0, 0.55f), new Vector2(1, 1f), Vector2.zero, DesertTheme.FontSizeCaption, TextAlignmentOptions.Left);
@@ -707,20 +784,33 @@ namespace MergeSurvivor.UI
             trackImg.color = new Color(0f, 0f, 0f, 0.45f);
             trackImg.raycastTarget = false;
 
+            // Width is driven by anchors (see SetBarFill) rather than Image.fillAmount,
+            // which silently renders full when the Image has no sprite.
             var fillGo = Ui("Fill", track.transform);
-            Stretch(fillGo.GetComponent<RectTransform>());
+            var fillRt = fillGo.GetComponent<RectTransform>();
+            fillRt.anchorMin = new Vector2(0f, 0f);
+            fillRt.anchorMax = new Vector2(0f, 1f);
+            fillRt.pivot = new Vector2(0f, 0.5f);
+            fillRt.offsetMin = Vector2.zero;
+            fillRt.offsetMax = Vector2.zero;
             var fill = fillGo.AddComponent<Image>();
             fill.color = fillColor;
-            fill.type = Image.Type.Filled;
-            fill.fillMethod = Image.FillMethod.Horizontal;
-            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
-            fill.fillAmount = 0f;
             fill.raycastTarget = false;
 
             var value = Label("Value", row.transform, new Vector2(0.80f, 0f), new Vector2(1f, 0.5f), Vector2.zero, DesertTheme.FontSizeBody, TextAlignmentOptions.Right);
             value.text = "0";
             value.color = fillColor;
             return (fill, value);
+        }
+
+        // Drives a power-bar fill width (0..1) via anchors so it renders without a sprite.
+        private static void SetBarFill(Image fill, float fraction)
+        {
+            if (fill == null) return;
+            var rt = fill.rectTransform;
+            rt.anchorMax = new Vector2(Mathf.Clamp01(fraction), 1f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
 
         private void BuildMeta(Transform parent)
@@ -733,19 +823,45 @@ namespace MergeSurvivor.UI
             r.anchorMin = new Vector2(0.06f, 0.15f);
             r.anchorMax = new Vector2(0.94f, 0.85f);
             r.offsetMin = r.offsetMax = Vector2.zero;
-            var metaTitle = Label("MetaTitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -24), DesertTheme.FontSizeTitle);
+            var metaTitle = Label("MetaTitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -40), DesertTheme.FontSizeTitle);
             metaTitle.text = "Merchant Tent";
             metaTitle.color = DesertTheme.AccentGold;
-            var metaSubtitle = Label("MetaSubtitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -54), DesertTheme.FontSizeCaption);
+            metaTitle.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 64);
+            var metaSubtitle = Label("MetaSubtitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -96), DesertTheme.FontSizeCaption);
             metaSubtitle.text = "Upgrade your caravan for the journey ahead";
             metaSubtitle.color = DesertTheme.TextSecondary;
-            Button("Upgrade Spawn Capacity", _metaPanel.transform, new Vector2(0, 24), UpgradeSpawn, panelButtonSprite);
-            Button("Upgrade Starting Chance", _metaPanel.transform, new Vector2(0, -30), UpgradeChance, panelButtonSprite);
-            Button("Unlock Next Board", _metaPanel.transform, new Vector2(0, -84), UnlockNextBoard, panelButtonSprite);
-            Button("Caravan Routes", _metaPanel.transform, new Vector2(0, -138), () => { CloseMeta(); OpenBoardSelect(); }, panelButtonSprite);
-            var returnBtn = ButtonGo("Return", _metaPanel.transform, new Vector2(0, -192), CloseMeta, panelButtonSprite);
+
+            // Vertical stack so upgrade buttons never overlap and fill the panel width.
+            var metaList = Ui("MetaList", _metaPanel.transform);
+            var mlRt = metaList.GetComponent<RectTransform>();
+            mlRt.anchorMin = new Vector2(0.08f, 0.05f);
+            mlRt.anchorMax = new Vector2(0.92f, 0.80f);
+            mlRt.offsetMin = mlRt.offsetMax = Vector2.zero;
+            var mlLayout = metaList.AddComponent<VerticalLayoutGroup>();
+            mlLayout.spacing = 18;
+            mlLayout.childAlignment = TextAnchor.MiddleCenter;
+            mlLayout.childControlWidth = true;
+            mlLayout.childControlHeight = true;
+            mlLayout.childForceExpandWidth = true;
+            mlLayout.childForceExpandHeight = false;
+
+            MetaButton(metaList.transform, "Upgrade Spawn Capacity", UpgradeSpawn);
+            MetaButton(metaList.transform, "Upgrade Starting Chance", UpgradeChance);
+            MetaButton(metaList.transform, "Unlock Next Board", UnlockNextBoard);
+            MetaButton(metaList.transform, "Caravan Routes", () => { CloseMeta(); OpenBoardSelect(); });
+            var returnBtn = MetaButton(metaList.transform, "Return", CloseMeta);
             returnBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
             _metaPanel.SetActive(false);
+        }
+
+        // A full-width button sized for a vertical layout list (Merchant Tent).
+        private GameObject MetaButton(Transform parent, string title, UnityEngine.Events.UnityAction click)
+        {
+            var b = ButtonGo(title, parent, Vector2.zero, click, panelButtonSprite);
+            var le = b.AddComponent<LayoutElement>();
+            le.minHeight = DesertTheme.ButtonHeight + 8f;
+            le.preferredHeight = DesertTheme.ButtonHeight + 8f;
+            return b;
         }
 
         private void BuildBoardSelectPanel(Transform parent)
@@ -858,7 +974,12 @@ namespace MergeSurvivor.UI
                 }
             }
 
-            Button("Close", _boardSelectPanel.transform, new Vector2(0, -30), () => { _boardSelectPanel.SetActive(false); RefreshAll(); }, panelButtonSprite);
+            var closeBtn = ButtonGo("Close", _boardSelectPanel.transform, Vector2.zero, () => { _boardSelectPanel.SetActive(false); RefreshAll(); }, panelButtonSprite);
+            var closeRt = closeBtn.GetComponent<RectTransform>();
+            closeRt.anchorMin = closeRt.anchorMax = new Vector2(0.5f, 0.045f);
+            closeRt.sizeDelta = new Vector2(320, 72);
+            closeRt.anchoredPosition = Vector2.zero;
+            closeBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
             _boardSelectPanel.SetActive(false);
         }
 
@@ -992,6 +1113,7 @@ namespace MergeSurvivor.UI
             _audio.PlaySfx(AudioManager.SfxFightStart);
             var r = _session.Fight();
             _lastFightWasLoss = !r.Won;
+            SetStatus($"Battle: {r.PlayerPower} / {r.EnemyPower} — {(r.Won ? "Victory!" : "Defeat")}");
             SaveAccount();
             RefreshAll();
             ShowFightResult(r);
@@ -1024,8 +1146,8 @@ namespace MergeSurvivor.UI
             _fightResultSubtitle.text = "The clash begins\u2026";
             _fightResultSubtitle.color = DesertTheme.TextSecondary;
             _fightResultRewards.text = string.Empty;
-            if (_playerBarFill != null) _playerBarFill.fillAmount = 0f;
-            if (_enemyBarFill != null) _enemyBarFill.fillAmount = 0f;
+            SetBarFill(_playerBarFill, 0f);
+            SetBarFill(_enemyBarFill, 0f);
             if (_playerPowerLabel != null) _playerPowerLabel.text = "0";
             if (_enemyPowerLabel != null) _enemyPowerLabel.text = "0";
             if (_fightContinueButton != null) _fightContinueButton.SetActive(false);
@@ -1041,14 +1163,16 @@ namespace MergeSurvivor.UI
                 elapsed += Time.unscaledDeltaTime;
                 var t = Mathf.Clamp01(elapsed / raceTime);
                 var e = 1f - Mathf.Pow(1f - t, 3f); // easeOutCubic
-                if (_playerBarFill != null) _playerBarFill.fillAmount = (playerPower / (float)maxPower) * e;
-                if (_enemyBarFill != null) _enemyBarFill.fillAmount = (enemyPower / (float)maxPower) * e;
+                SetBarFill(_playerBarFill, (playerPower / (float)maxPower) * e);
+                SetBarFill(_enemyBarFill, (enemyPower / (float)maxPower) * e);
                 if (_playerPowerLabel != null) _playerPowerLabel.text = Mathf.RoundToInt(playerPower * e).ToString();
                 if (_enemyPowerLabel != null) _enemyPowerLabel.text = Mathf.RoundToInt(enemyPower * e).ToString();
                 yield return null;
             }
             if (_playerPowerLabel != null) _playerPowerLabel.text = playerPower.ToString();
             if (_enemyPowerLabel != null) _enemyPowerLabel.text = enemyPower.ToString();
+            SetBarFill(_playerBarFill, playerPower / (float)maxPower);
+            SetBarFill(_enemyBarFill, enemyPower / (float)maxPower);
 
             // Suspense beat with a flash on the winning bar.
             var winnerBar = r.Won ? _playerBarFill : _enemyBarFill;
@@ -1068,9 +1192,9 @@ namespace MergeSurvivor.UI
             _fightResultSubtitle.text = r.Won ? "Your caravan prevails!" : "The wave overwhelms you\u2026";
             _fightResultSubtitle.color = DesertTheme.TextPrimary;
             if (r.Won && _combatConfig != null)
-                _fightResultRewards.text = $"+{_combatConfig.WinSoft} <color=#E5BA42>\u2726</color>  +{_combatConfig.WinResource} <color=#D9A050>\u2B22</color>";
+                _fightResultRewards.text = $"<color=#E5BA42>+{_combatConfig.WinSoft} Gold</color>    <color=#D9A050>+{_combatConfig.WinResource} Resource</color>";
             else
-                _fightResultRewards.text = r.Won ? "+rewards" : "Merge more pieces, then Fight again.";
+                _fightResultRewards.text = r.Won ? "Rewards earned!" : "Merge more gems, then Fight again.";
             _fightResultRewards.color = r.Won ? DesertTheme.AccentGold : DesertTheme.TextSecondary;
 
             // Title bounce.
@@ -1251,11 +1375,20 @@ namespace MergeSurvivor.UI
             _premiumLabel.text = _inventory.Get(CurrencyType.Premium).ToString();
             _resourceLabel.text = _inventory.Get(CurrencyType.ProgressionResource).ToString();
             _hud.text = $"Wave {_session.CurrentWave}  |  Soft {_inventory.Get(CurrencyType.Soft)}  Premium {_inventory.Get(CurrencyType.Premium)}  Resource {_inventory.Get(CurrencyType.ProgressionResource)}";
-            if (_boardBackgroundImage != null && boardBackgroundCatalog != null)
+            if (boardBackgroundCatalog != null)
             {
                 var bgSprite = boardBackgroundCatalog.GetBackground(_session.CurrentBoardIndex);
-                if (bgSprite != null) { _boardBackgroundImage.sprite = bgSprite; _boardBackgroundImage.color = Color.white; }
-                else { _boardBackgroundImage.sprite = null; _boardBackgroundImage.color = DesertTheme.BgSecondary; }
+                if (_boardBackgroundImage != null)
+                {
+                    if (bgSprite != null) { _boardBackgroundImage.sprite = bgSprite; _boardBackgroundImage.color = Color.white; }
+                    else { _boardBackgroundImage.sprite = null; _boardBackgroundImage.color = DesertTheme.BgSecondary; }
+                }
+                // Same art, heavily dimmed, fills the whole screen behind the board.
+                if (_backdropImage != null)
+                {
+                    if (bgSprite != null) { _backdropImage.sprite = bgSprite; _backdropImage.color = new Color(0.28f, 0.26f, 0.30f, 1f); }
+                    else { _backdropImage.sprite = null; _backdropImage.color = DesertTheme.BgPrimary; }
+                }
             }
             var currentBoard = _session.CurrentBoard;
             _boardHud.text = currentBoard == null
@@ -1363,6 +1496,23 @@ namespace MergeSurvivor.UI
             r.offsetMax = Vector2.zero;
         }
 
+        // A horizontal row of equal-width buttons for the bottom action bar.
+        private static GameObject ButtonRow(string name, Transform parent)
+        {
+            var go = Ui(name, parent);
+            var h = go.AddComponent<HorizontalLayoutGroup>();
+            h.spacing = 16;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
+            h.childForceExpandWidth = true;
+            h.childForceExpandHeight = true;
+            var le = go.AddComponent<LayoutElement>();
+            le.minHeight = DesertTheme.ButtonHeight;
+            le.preferredHeight = DesertTheme.ButtonHeight;
+            return go;
+        }
+
         private static TMP_Text Label(string name, Transform parent, Vector2 amin, Vector2 amax, Vector2 apos, float size, TextAlignmentOptions align = TextAlignmentOptions.Center)
         {
             var go = Ui(name, parent);
@@ -1370,7 +1520,7 @@ namespace MergeSurvivor.UI
             r.anchorMin = amin;
             r.anchorMax = amax;
             r.anchoredPosition = apos;
-            r.sizeDelta = new Vector2(0, 28);
+            r.sizeDelta = new Vector2(0, 44);
             var t = go.AddComponent<TextMeshProUGUI>();
             t.fontSize = size;
             t.alignment = align;
@@ -1410,9 +1560,12 @@ namespace MergeSurvivor.UI
             colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.6f);
             b.colors = colors;
             b.onClick.AddListener(click);
-            var label = Label("Text", go.transform, Vector2.zero, Vector2.one, Vector2.zero, DesertTheme.FontSizeCaption);
+            var label = Label("Text", go.transform, Vector2.zero, Vector2.one, Vector2.zero, DesertTheme.FontSizeBody);
             label.text = title;
             label.alignment = TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 14;
+            label.fontSizeMax = DesertTheme.FontSizeBody;
             return go;
         }
     }

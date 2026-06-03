@@ -41,8 +41,9 @@ namespace MergeSurvivor.Tests
 
             Assert.IsNotNull(Object.FindFirstObjectByType<Canvas>(), "Canvas was not created.");
             Assert.IsNotNull(Object.FindFirstObjectByType<EventSystem>(), "EventSystem was not created.");
-            Assert.IsNotNull(GameObject.Find("Btn_Spawn Item"), "Spawn button missing.");
-            Assert.IsNotNull(GameObject.Find("Btn_Fight"), "Fight button missing.");
+            // Spawn/Fight are run-only buttons, hidden in the hub — find them inactive-inclusively.
+            Assert.IsNotNull(FindObjectByNameIncludingInactive<Button>("Btn_Spawn Gem"), "Spawn button missing.");
+            Assert.IsNotNull(FindObjectByNameIncludingInactive<Button>("Btn_Fight"), "Fight button missing.");
             Assert.IsNotNull(GameObject.Find("Btn_Meta Hub"), "Meta Hub button missing.");
         }
 
@@ -54,8 +55,8 @@ namespace MergeSurvivor.Tests
 
             yield return null;
 
-            var spawnButton = GameObject.Find("Btn_Spawn Item")?.GetComponent<Button>();
-            var fightButton = GameObject.Find("Btn_Fight")?.GetComponent<Button>();
+            var spawnButton = FindObjectByNameIncludingInactive<Button>("Btn_Spawn Gem");
+            var fightButton = FindObjectByNameIncludingInactive<Button>("Btn_Fight");
             var metaButton = GameObject.Find("Btn_Meta Hub")?.GetComponent<Button>();
             var returnButton = FindObjectByNameIncludingInactive<Button>("Btn_Return");
             var statusText = GameObject.Find("Status")?.GetComponent<TMP_Text>();
@@ -145,7 +146,7 @@ namespace MergeSurvivor.Tests
 
             var metaButton = GameObject.Find("Btn_Meta Hub")?.GetComponent<Button>();
             var unlockButton = FindObjectByNameIncludingInactive<Button>("Btn_Unlock Next Board");
-            var nextBoardButton = GameObject.Find("Btn_Next Board")?.GetComponent<Button>();
+            var nextBoardButton = FindObjectByNameIncludingInactive<Button>("Btn_Next Board");
             var boardHud = GameObject.Find("BoardHUD")?.GetComponent<TMP_Text>();
 
             Assert.IsNotNull(metaButton, "Meta button missing.");
