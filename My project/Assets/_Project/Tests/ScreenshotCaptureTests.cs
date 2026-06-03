@@ -6,6 +6,7 @@ using MergeSurvivor.UI;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -25,6 +26,9 @@ namespace MergeSurvivor.Tests
         private RenderTexture _rt;
         private string _outDir;
 
+        // [Explicit] keeps this out of normal CI runs (it writes PNGs and touches PlayerPrefs).
+        // Run it on demand: -testFilter "MergeSurvivor.Tests.ScreenshotCaptureTests".
+        [Explicit("Screenshot capture utility; run manually via test filter.")]
         [UnityTest]
         public IEnumerator Capture_GameplayScreenshots()
         {
@@ -155,6 +159,10 @@ namespace MergeSurvivor.Tests
             _captureCam.farClipPlane = 5000f;
             _captureCam.cullingMask = ~0;
             _captureCam.transform.position = new Vector3(0, 0, -100f);
+            // Match the game camera so captured frames show bloom + grading.
+            _captureCam.allowHDR = true;
+            var camData = _captureCam.GetUniversalAdditionalCameraData();
+            if (camData != null) camData.renderPostProcessing = true;
 
             _rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32) { antiAliasing = 1 };
             _rt.Create();

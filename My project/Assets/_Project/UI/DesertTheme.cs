@@ -11,7 +11,7 @@ namespace MergeSurvivor.UI
         public static readonly Color BgOverlay = new(0.06f, 0.04f, 0.03f, 0.92f);    // Modal overlay
 
         // === BOARD / GRID (amber illuminated tapestry feel) ===
-        public static readonly Color GridSlotEmpty = new(0.20f, 0.15f, 0.10f, 0.85f);
+        public static readonly Color GridSlotEmpty = new(0.15f, 0.11f, 0.08f, 0.97f);
         public static readonly Color GridSlotHighlight = new(0.35f, 0.25f, 0.12f, 0.95f);
         public static readonly Color GridBorder = new(0.45f, 0.32f, 0.15f, 0.7f);
 

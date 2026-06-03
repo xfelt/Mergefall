@@ -8,6 +8,8 @@ using MergeSurvivor.Platform;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.UI;
@@ -243,6 +245,7 @@ namespace MergeSurvivor.UI
         private void BuildUi()
         {
             EnsureFallbackCamera();
+            EnsurePostFx();
             EnsureEventSystem();
             var canvas = EnsureCanvas();
             var root = Ui("Root", canvas.transform);
@@ -1358,14 +1361,15 @@ namespace MergeSurvivor.UI
                 var id = _session.Board.Get(c.X, c.Y);
                 if (string.IsNullOrEmpty(id))
                 {
-                    c.Set("-");
+                    c.Set("");
                     c.SetPiece(null);
                 }
                 else
                 {
                     var d = _items.GetById(id);
                     var tier = d?.Tier ?? 1;
-                    c.Set(d == null ? id : $"{d.DisplayName}\nT{tier}");
+                    // Gem colour already reads the type; a single tier badge keeps the board uncluttered.
+                    c.Set(d == null ? id : $"T{tier}");
                     c.SetPiece(tier, id);
                 }
             }
@@ -1380,7 +1384,7 @@ namespace MergeSurvivor.UI
                 var bgSprite = boardBackgroundCatalog.GetBackground(_session.CurrentBoardIndex);
                 if (_boardBackgroundImage != null)
                 {
-                    if (bgSprite != null) { _boardBackgroundImage.sprite = bgSprite; _boardBackgroundImage.color = Color.white; }
+                    if (bgSprite != null) { _boardBackgroundImage.sprite = bgSprite; _boardBackgroundImage.color = new Color(0.5f, 0.48f, 0.5f, 1f); }
                     else { _boardBackgroundImage.sprite = null; _boardBackgroundImage.color = DesertTheme.BgSecondary; }
                 }
                 // Same art, heavily dimmed, fills the whole screen behind the board.
@@ -1450,19 +1454,57 @@ namespace MergeSurvivor.UI
 
         private static void EnsureFallbackCamera()
         {
-            if (Camera.main != null || FindFirstObjectByType<Camera>() != null)
+            var cam = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
+            if (cam == null)
             {
-                return;
+                var camGo = new GameObject("Main Camera");
+                camGo.tag = "MainCamera";
+                cam = camGo.AddComponent<Camera>();
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = DesertTheme.CameraBg;
+                cam.orthographic = true;
+                cam.orthographicSize = 5f;
+                camGo.transform.position = new Vector3(0f, 0f, -10f);
             }
 
-            var camGo = new GameObject("Main Camera");
-            camGo.tag = "MainCamera";
-            var cam = camGo.AddComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = DesertTheme.CameraBg;
-            cam.orthographic = true;
-            cam.orthographicSize = 5f;
-            camGo.transform.position = new Vector3(0f, 0f, -10f);
+            // Enable HDR + post-processing so the global Volume (bloom, vignette,
+            // grading) actually renders — this is what gives the gems their glow.
+            cam.allowHDR = true;
+            var camData = cam.GetUniversalAdditionalCameraData();
+            if (camData != null) camData.renderPostProcessing = true;
+        }
+
+        // Builds a global post-processing Volume at runtime (the scene has none).
+        // Bloom makes bright gems / gold / the diamond tier glow; a soft vignette
+        // and warm grade pull the flat UI toward the polished app-icon look.
+        private static void EnsurePostFx()
+        {
+            if (FindFirstObjectByType<Volume>() != null) return;
+
+            var go = new GameObject("Global Volume");
+            var vol = go.AddComponent<Volume>();
+            vol.isGlobal = true;
+            vol.priority = 10f;
+
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            vol.sharedProfile = profile;
+
+            var bloom = profile.Add<Bloom>();
+            bloom.threshold.Override(0.8f);
+            bloom.intensity.Override(0.95f);
+            bloom.scatter.Override(0.72f);
+            bloom.tint.Override(new Color(1f, 0.96f, 0.86f));
+
+            var vignette = profile.Add<Vignette>();
+            vignette.color.Override(new Color(0.04f, 0.02f, 0.01f));
+            vignette.intensity.Override(0.33f);
+            vignette.smoothness.Override(0.45f);
+
+            var grade = profile.Add<ColorAdjustments>();
+            grade.postExposure.Override(0.1f);
+            grade.contrast.Override(12f);
+            grade.saturation.Override(14f);
+            grade.colorFilter.Override(new Color(1f, 0.97f, 0.92f));
         }
 
         private static Canvas EnsureCanvas()
