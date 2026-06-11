@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2e9861b604c3454ba3e1ee147b7d4cb, type: 3}
+  m_Name: AppPlatformConfig
+  m_EditorClassIdentifier:
+  androidPackage: com.xfeltech.mergefall
+  useProjectSettingsVersion: 1
+  androidBundleVersion: 1.0.0
+  androidBundleVersionCode: 1
+  billingProductPremiumPack: premium_pack_01
+  coinPackProductIds:
+  - gems_pouch
+  - gems_stack
+  - gems_chest
+  - gems_vault
+  - gems_hoard
+  - starter_bundle
+  adUnitRewarded: ca-app-pub-3940256099942544/5224354917
+  adUnitInterstitial: ca-app-pub-3940256099942544/1033173712
+  firebaseProject: mergefall

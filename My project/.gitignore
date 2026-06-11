@@ -6,6 +6,7 @@ Mergefall_BurstDebugInformation_DoNotShip/
 /Library/
 /Temp/
 /Obj/
+/.utmp/
 /Logs/
 /UserSettings/
 /MemoryCaptures/
