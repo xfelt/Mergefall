@@ -6,6 +6,7 @@ Mergefall_BurstDebugInformation_DoNotShip/
 /Library/
 /Temp/
 /Obj/
+/.utmp/
 /Logs/
 /UserSettings/
 /MemoryCaptures/
@@ -27,6 +28,10 @@ Mergefall_BurstDebugInformation_DoNotShip/
 *.mdb
 *.opendb
 *.VC.db
+
+# Signing keys — never commit
+*.keystore
+*.jks
 
 # OS noise
 .DS_Store

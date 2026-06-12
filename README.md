@@ -44,11 +44,19 @@ Unity mobile prototype foundation for an Android-first hybrid-casual loop:
 
 ## Android / Google Play Readiness Notes
 
+Publishing documents (repo root):
+- `PRIVACY_POLICY.md` — privacy policy ready to host; link its public URL in Play Console.
+- `DATA_SAFETY.md` — pre-filled answers for the Play Console Data safety form, content
+  rating, ads declaration, and the in-app product list to create.
+- `STORE_LISTING.md` — store title, descriptions, and feature bullets.
+- `.github/workflows/android-release.yml` — CI that runs the Unity test suites and builds
+  a signed `.aab` (requires the Unity license + keystore secrets listed in the file header).
+
 Central platform config object:
-- `AppPlatformConfig` contains:
-  - Android package + version placeholders
-  - Billing product ID placeholders
-  - AdMob unit ID placeholders
+- `AppPlatformConfig` asset lives at `My project/Assets/_Project/Resources/AppPlatformConfig.asset`:
+  - Android package: `com.xfeltech.mergefall` (matches Player Settings)
+  - Billing product IDs: `gems_pouch`/`gems_stack`/`gems_chest`/`gems_vault`/`gems_hoard`/`starter_bundle`
+  - AdMob unit IDs: **Google's official test IDs** — replace with production ad units before release
   - Firebase project placeholder
 
 TODO integration markers already added in platform stubs:
@@ -58,12 +66,14 @@ TODO integration markers already added in platform stubs:
 - `RemoteConfigServiceStub` -> Firebase Remote Config fetch/activate
 - `CloudSaveServiceStub` -> future cloud save provider
 
-Release pipeline TODOs:
-- Configure package id + versioning strategy in Player Settings for Android
-- Add keystore and signing config for release
-- Build AAB (`Build App Bundle`) for Play Console upload
-- Add `google-services.json` for Firebase setup
-- Replace placeholder product/ad unit IDs with production IDs
+Release pipeline status:
+- [x] Package id (`com.xfeltech.mergefall`), version `1.0.0` / code 1, IL2CPP + ARM64 set in Player Settings
+- [x] CI workflow builds the `.aab` (`.github/workflows/android-release.yml`); versionCode auto-increments per run
+- [x] Privacy policy + Data safety answers authored (repo root)
+- [ ] Add keystore + Unity license as GitHub Actions secrets (see workflow header)
+- [ ] Host `PRIVACY_POLICY.md` at a public URL and link it in Play Console
+- [ ] Add `google-services.json` for Firebase setup (only when enabling `MERGE_SURVIVOR_USE_FIREBASE`)
+- [ ] Replace AdMob test ad unit IDs in `AppPlatformConfig.asset` with production IDs (only when enabling `MERGE_SURVIVOR_USE_ADMOB`)
 
 ## Next Implementation Priorities
 
