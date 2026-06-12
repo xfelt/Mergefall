@@ -2,14 +2,13 @@
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #
-# Unity Personal (free) license — use ONLY these three; do NOT set UNITY_LICENSE or UNITY_SERIAL:
-#   UNITY_EMAIL            — Unity account email
-#   UNITY_PASSWORD           — Unity account password
+# Unity Personal (free) license:
+#   UNITY_EMAIL              — Unity account email
+#   UNITY_PASSWORD             — Unity account password
+#   (The workflow sets UNITY_SERIAL=x automatically — do NOT add a UNITY_LICENSE secret.)
 #
-# Unity Plus/Pro license — use these instead (do NOT set UNITY_LICENSE):
-#   UNITY_EMAIL            — Unity account email
-#   UNITY_PASSWORD           — Unity account password
-#   UNITY_SERIAL             — serial from Unity Hub → Manage License (XX-XXXX-…)
+# Unity Plus/Pro license — replace the hardcoded serial line in both jobs with:
+#   UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
 #
 # Android signing:
 #   ANDROID_KEYSTORE_BASE64 — upload keystore, base64-encoded (`base64 -w0 upload.keystore`)
@@ -50,6 +49,7 @@ jobs:
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: x
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -83,6 +83,7 @@ jobs:
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: x
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
