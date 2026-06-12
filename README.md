@@ -52,6 +52,19 @@ Publishing documents (repo root):
 - `.github/workflows/android-release.yml` — CI that runs the Unity test suites and builds
   a signed `.aab` (requires the Unity license + keystore secrets listed in the file header).
 
+**Unity Personal license serial (one-time):** game-ci v4 needs the serial from your local
+`Unity_lic.ulf`, not the `.ulf` file itself. On Windows (PowerShell):
+
+```powershell
+Get-Content "$env:ProgramData\Unity\Unity_lic.ulf" |
+  Select-String -Pattern 'DeveloperData' |
+  ForEach-Object { if ($_ -match 'Value="([^"]+)"') {
+    [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($matches[1])).Trim([char]0)
+  }}
+```
+
+Store the output (format `XX-XXXX-…`) as the `UNITY_SERIAL` GitHub Actions secret.
+
 Central platform config object:
 - `AppPlatformConfig` asset lives at `My project/Assets/_Project/Resources/AppPlatformConfig.asset`:
   - Android package: `com.xfeltech.mergefall` (matches Player Settings)
@@ -71,7 +84,7 @@ Release pipeline status:
 - [x] CI workflow builds the `.aab` (`.github/workflows/android-release.yml`); versionCode auto-increments per run
 - [x] Privacy policy + Data safety answers authored (repo root)
 - [x] Add keystore + Unity credentials as GitHub Actions secrets (see workflow header)
-- [ ] Remove the `UNITY_LICENSE` repo secret if present — Personal licenses must use email/password only (a `.ulf` file causes `serial invalid` in CI)
+- [x] Set `UNITY_SERIAL` from your local `Unity_lic.ulf` (Personal license — do **not** use a `.ulf` file or the placeholder `x` in CI)
 - [ ] Host `PRIVACY_POLICY.md` at a public URL and link it in Play Console
 - [ ] Add `google-services.json` for Firebase setup (only when enabling `MERGE_SURVIVOR_USE_FIREBASE`)
 - [ ] Replace AdMob test ad unit IDs in `AppPlatformConfig.asset` with production IDs (only when enabling `MERGE_SURVIVOR_USE_ADMOB`)

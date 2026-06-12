@@ -5,10 +5,9 @@
 # Unity Personal (free) license:
 #   UNITY_EMAIL              — Unity account email
 #   UNITY_PASSWORD             — Unity account password
-#   (The workflow sets UNITY_SERIAL=x automatically — do NOT add a UNITY_LICENSE secret.)
+#   UNITY_SERIAL               — extract from local Unity_lic.ulf (see README)
 #
-# Unity Plus/Pro license — replace the hardcoded serial line in both jobs with:
-#   UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+# Unity Plus/Pro license — same three secrets; serial comes from Unity Subscriptions page.
 #
 # Android signing:
 #   ANDROID_KEYSTORE_BASE64 — upload keystore, base64-encoded (`base64 -w0 upload.keystore`)
@@ -49,7 +48,7 @@ jobs:
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: x
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -83,7 +82,7 @@ jobs:
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: x
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
