@@ -29,6 +29,10 @@ Mergefall_BurstDebugInformation_DoNotShip/
 *.opendb
 *.VC.db
 
+# Signing keys — never commit
+*.keystore
+*.jks
+
 # OS noise
 .DS_Store
 Thumbs.db
