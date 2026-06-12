@@ -2,22 +2,37 @@
 // adding "UnityEngine.Purchasing" to MergeSurvivor.Platform.asmdef, and renaming this file to StoreServiceGooglePlay.cs.
 // Unity 6 uses IAP 5.x; you may need to update this implementation to the 5.x API.
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Purchasing;
 using UnityEngine.Purchasing.Extension;
 
 namespace MergeSurvivor.Platform
 {
-    /// <summary>Google Play Billing via Unity IAP. Product IDs and config from AppPlatformConfig (e.g. BillingProductPremiumPack).</summary>
+    /// <summary>Google Play Billing via Unity IAP. Product IDs and config from AppPlatformConfig (e.g. BillingProductPremiumPack, CoinPackProductIds).</summary>
     public sealed class StoreServiceGooglePlay : IStoreService, IStoreListener
     {
         private IStoreController _controller;
         private IExtensionProvider _extensions;
         private readonly AppPlatformConfig _config;
+        // One-time products (bundles) should be NonConsumable so Google Play tracks ownership.
+        private static readonly HashSet<string> OneTimeProductIds = new() { "starter_bundle", "remove_ads" };
+        private readonly HashSet<string> _extraProducts = new();
+
+        public event Action<string> PurchaseCompleted;
 
         public StoreServiceGooglePlay(AppPlatformConfig config)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
+        }
+
+        public void RegisterProducts(IEnumerable<string> productIds)
+        {
+            if (productIds == null) return;
+            foreach (var id in productIds)
+            {
+                if (!string.IsNullOrEmpty(id)) _extraProducts.Add(id);
+            }
         }
 
         public void Initialize()
@@ -25,6 +40,18 @@ namespace MergeSurvivor.Platform
             if (_controller != null) return;
             var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
             builder.AddProduct(_config.BillingProductPremiumPack, ProductType.Consumable);
+            if (_config.CoinPackProductIds != null)
+            {
+                foreach (var id in _config.CoinPackProductIds)
+                {
+                    if (!string.IsNullOrEmpty(id)) _extraProducts.Add(id);
+                }
+            }
+            foreach (var id in _extraProducts)
+            {
+                var type = OneTimeProductIds.Contains(id) ? ProductType.NonConsumable : ProductType.Consumable;
+                builder.AddProduct(id, type);
+            }
             UnityPurchasing.Initialize(this, builder);
         }
 
@@ -62,7 +89,8 @@ namespace MergeSurvivor.Platform
         public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs e)
         {
             var productId = e.purchasedProduct.definition.id;
-            Debug.Log($"[Store] Purchase completed: {productId}. Grant content then confirm.");
+            Debug.Log($"[Store] Purchase completed: {productId}. Granting content.");
+            PurchaseCompleted?.Invoke(productId);
             return PurchaseProcessingResult.Complete;
         }
 

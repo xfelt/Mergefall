@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="21" result="Passed" total="21" passed="20" failed="0" inconclusive="0" skipped="1" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0,3956757">
+  <test-suite type="TestSuite" id="1031" name="Mergefall" fullname="Mergefall" runstate="Runnable" testcasecount="21" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.395676" total="21" passed="20" failed="0" inconclusive="0" skipped="1" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1025" name="MergeSurvivor.Tests.dll" fullname="C:/Users/Xfeltech/OneDrive/Documents/GitHub/Android game/My project/Library/ScriptAssemblies/MergeSurvivor.Tests.dll" runstate="Runnable" testcasecount="21" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.388892" total="21" passed="20" failed="0" inconclusive="0" skipped="1" asserts="0">
+      <properties>
+        <property name="_PID" value="91328" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+      <test-suite type="TestSuite" id="1026" name="MergeSurvivor" fullname="MergeSurvivor" runstate="Runnable" testcasecount="21" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.388061" total="21" passed="20" failed="0" inconclusive="0" skipped="1" asserts="0">
+        <properties />
+        <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+        <test-suite type="TestSuite" id="1027" name="Tests" fullname="MergeSurvivor.Tests" runstate="Runnable" testcasecount="21" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.387498" total="21" passed="20" failed="0" inconclusive="0" skipped="1" asserts="0">
+          <properties />
+          <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+          <test-suite type="TestFixture" id="1001" name="MonetizationTests" fullname="MergeSurvivor.Tests.MonetizationTests" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.039742" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            <test-case id="1010" name="CoinPack_TotalGems_IncludesBonus" fullname="MergeSurvivor.Tests.MonetizationTests.CoinPack_TotalGems_IncludesBonus" methodname="CoinPack_TotalGems_IncludesBonus" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="84874017" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.007787" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1005" name="Collection_BonusAggregation" fullname="MergeSurvivor.Tests.MonetizationTests.Collection_BonusAggregation" methodname="Collection_BonusAggregation" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="511149841" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.002474" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1004" name="Collection_UnlockAndCraft" fullname="MergeSurvivor.Tests.MonetizationTests.Collection_UnlockAndCraft" methodname="Collection_UnlockAndCraft" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="902500817" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.001242" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1007" name="Daily_AdCaps_ResetNextDay" fullname="MergeSurvivor.Tests.MonetizationTests.Daily_AdCaps_ResetNextDay" methodname="Daily_AdCaps_ResetNextDay" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="264114612" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.001257" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1006" name="Daily_StreakProgression_CultureSafe" fullname="MergeSurvivor.Tests.MonetizationTests.Daily_StreakProgression_CultureSafe" methodname="Daily_StreakProgression_CultureSafe" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="984020606" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.006006" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1003" name="Gacha_Distribution_CommonMostFrequent" fullname="MergeSurvivor.Tests.MonetizationTests.Gacha_Distribution_CommonMostFrequent" methodname="Gacha_Distribution_CommonMostFrequent" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="1238812634" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.005289" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1002" name="Gacha_Pity_GuaranteesEpicPlus" fullname="MergeSurvivor.Tests.MonetizationTests.Gacha_Pity_GuaranteesEpicPlus" methodname="Gacha_Pity_GuaranteesEpicPlus" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="473210059" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.002279" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1008" name="Prestige_MultiplierAndCap" fullname="MergeSurvivor.Tests.MonetizationTests.Prestige_MultiplierAndCap" methodname="Prestige_MultiplierAndCap" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="1599717290" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.000933" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1009" name="Storefront_GrantsGemsAndBundle" fullname="MergeSurvivor.Tests.MonetizationTests.Storefront_GrantsGemsAndBundle" methodname="Storefront_GrantsGemsAndBundle" classname="MergeSurvivor.Tests.MonetizationTests" runstate="Runnable" seed="1669488292" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.001305" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1011" name="PlayModeBootstrapTests" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.344498" total="11" passed="11" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            <test-case id="1018" name="CombatCalculator_ComposableModifiersApplyInSequence" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.CombatCalculator_ComposableModifiersApplyInSequence" methodname="CombatCalculator_ComposableModifiersApplyInSequence" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="1716408795" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.015811" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1017" name="CombatCalculator_EnemyModifiersApplyAsExpected" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.CombatCalculator_EnemyModifiersApplyAsExpected" methodname="CombatCalculator_EnemyModifiersApplyAsExpected" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="1380677765" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.002777" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1019" name="CombatCalculator_NonStackingGroupOnlyAppliesFirstModifierByOrder" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.CombatCalculator_NonStackingGroupOnlyAppliesFirstModifierByOrder" methodname="CombatCalculator_NonStackingGroupOnlyAppliesFirstModifierByOrder" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="1393037718" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.002097" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1020" name="FullRunFlow_SpawnMergeFightAndRewards" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.FullRunFlow_SpawnMergeFightAndRewards" methodname="FullRunFlow_SpawnMergeFightAndRewards" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="2040075990" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.044384" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Analytics] fight_loss
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1016" name="PrototypeBootstrap_BoardArchetypeIncreasesEnemyPowerOnAdvancedBoard" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.PrototypeBootstrap_BoardArchetypeIncreasesEnemyPowerOnAdvancedBoard" methodname="PrototypeBootstrap_BoardArchetypeIncreasesEnemyPowerOnAdvancedBoard" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="1597307332" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.030206" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Analytics] fight_loss
+[Analytics] fight_enemy_modifier_applied
+[Analytics] fight_enemy_modifier_applied
+[Analytics] fight_loss
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1015" name="PrototypeBootstrap_BoardUnlockAndSelectionFlowWorks" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.PrototypeBootstrap_BoardUnlockAndSelectionFlowWorks" methodname="PrototypeBootstrap_BoardUnlockAndSelectionFlowWorks" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="348139945" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.037037" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1013" name="PrototypeBootstrap_ButtonsTriggerExpectedUiState" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.PrototypeBootstrap_ButtonsTriggerExpectedUiState" methodname="PrototypeBootstrap_ButtonsTriggerExpectedUiState" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="573942985" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.056765" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Analytics] fight_loss
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1012" name="PrototypeBootstrap_CreatesCoreUiObjects" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.PrototypeBootstrap_CreatesCoreUiObjects" methodname="PrototypeBootstrap_CreatesCoreUiObjects" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="1613612318" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.029398" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1014" name="PrototypeBootstrap_MergeFlowUpgradesTierAndRewardsSoftCurrency" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.PrototypeBootstrap_MergeFlowUpgradesTierAndRewardsSoftCurrency" methodname="PrototypeBootstrap_MergeFlowUpgradesTierAndRewardsSoftCurrency" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="602565538" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.060099" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1022" name="SaveLoad_AccountPersists" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.SaveLoad_AccountPersists" methodname="SaveLoad_AccountPersists" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="1672275472" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.030418" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+            <test-case id="1021" name="SaveLoad_ProgressionPersists" fullname="MergeSurvivor.Tests.PlayModeBootstrapTests.SaveLoad_ProgressionPersists" methodname="SaveLoad_ProgressionPersists" classname="MergeSurvivor.Tests.PlayModeBootstrapTests" runstate="Runnable" seed="225319283" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.031671" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Ads] Stub init
+[Analytics] Stub init
+[Store] Stub init
+[RC] Stub init
+[CloudSave] Stub init
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1023" name="ScreenshotCaptureTests" fullname="MergeSurvivor.Tests.ScreenshotCaptureTests" classname="MergeSurvivor.Tests.ScreenshotCaptureTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.001759" total="1" passed="0" failed="0" inconclusive="0" skipped="1" asserts="0">
+            <properties />
+            <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+            <test-case id="1024" name="Capture_GameplayScreenshots" fullname="MergeSurvivor.Tests.ScreenshotCaptureTests.Capture_GameplayScreenshots" methodname="Capture_GameplayScreenshots" classname="MergeSurvivor.Tests.ScreenshotCaptureTests" runstate="Explicit" seed="1866670165" result="Skipped" label="Explicit" start-time="2026-06-03 15:26:17Z" end-time="2026-06-03 15:26:17Z" duration="0.000160" asserts="0">
+              <properties>
+                <property name="_SKIPREASON" value="Screenshot capture utility; run manually via test filter." />
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+              <reason>
+                <message><![CDATA[Screenshot capture utility; run manually via test filter.]]></message>
+              </reason>
+              <output><![CDATA[Saving results to: C:/Users/Xfeltech/AppData/LocalLow/Xfeltech/Mergefall\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

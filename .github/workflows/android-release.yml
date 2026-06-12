@@ -1,0 +1,96 @@
+# Builds the Google Play release artifact (.aab) and runs the Unity test suites.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   UNITY_LICENSE          — contents of your Unity .ulf license file (or use UNITY_EMAIL/PASSWORD/SERIAL for Pro)
+#   UNITY_EMAIL            — Unity account email (personal license activation)
+#   UNITY_PASSWORD         — Unity account password
+#   ANDROID_KEYSTORE_BASE64 — upload keystore, base64-encoded (`base64 -w0 upload.keystore`)
+#   ANDROID_KEYSTORE_PASS   — keystore password
+#   ANDROID_KEYALIAS_NAME   — key alias
+#   ANDROID_KEYALIAS_PASS   — key alias password
+#
+# The .aab lands in the workflow's artifacts; upload it to Play Console → Internal testing.
+
+name: Android Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  UNITY_VERSION: 6000.3.11f1
+  PROJECT_PATH: My project
+
+jobs:
+  test:
+    name: Unity tests (EditMode + PlayMode)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/cache@v4
+        with:
+          path: My project/Library
+          key: Library-test-${{ hashFiles('My project/Packages/packages-lock.json') }}
+          restore-keys: Library-test-
+
+      - name: Run tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          testMode: all
+          artifactsPath: test-results
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results
+
+  build:
+    name: Build Android App Bundle
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/cache@v4
+        with:
+          path: My project/Library
+          key: Library-android-${{ hashFiles('My project/Packages/packages-lock.json') }}
+          restore-keys: Library-android-
+
+      - name: Build .aab
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: Android
+          androidExportType: androidAppBundle
+          androidKeystoreName: upload.keystore
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          # Play Store requires a monotonically increasing versionCode per upload.
+          androidVersionCode: ${{ github.run_number }}
+          buildName: Mergefall
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mergefall-aab
+          path: build/Android/*.aab

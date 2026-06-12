@@ -48,10 +48,13 @@ Merge Survivor: Board Quest is for fans of merge games, survivor-style combat, a
 
 - Merge units on a tactical board to create stronger fighters  
 - Fight endless waves of enemies with your merged army  
+- Collect 16+ unlockable heroes across 4 rarities, each with powerful passive buffs  
+- Open Lucky Chests for a shot at rare and legendary heroes (with fair pity)  
+- Prestige and rebirth for permanent, compounding power — endless replayability  
+- Daily reward calendar: log in for escalating gold, gems, and free chests  
+- Earn free gems and double your rewards by watching optional ads  
 - Meta progression: permanent upgrades and unlocks between runs  
 - Board-game style layout: placement and strategy matter  
-- Idle rewards: earn progress and resources while offline  
-- Unlock new units, boards, and abilities as you play  
 - Simple controls: drag, drop, merge—easy to learn, deep to master  
 
 ---

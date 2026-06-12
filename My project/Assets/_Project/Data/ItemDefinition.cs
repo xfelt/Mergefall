@@ -6,7 +6,7 @@ namespace MergeSurvivor.Data
     public sealed class ItemDefinition : ScriptableObject
     {
         [SerializeField] private string id = "pawn_t1";
-        [SerializeField] private string displayName = "Pawn";
+        [SerializeField] private string displayName = "Emerald";
         [SerializeField] private string familyId = "pawn";
         [SerializeField] private int tier = 1;
         [SerializeField] private Sprite icon;

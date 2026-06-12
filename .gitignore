@@ -1,2 +1,4 @@
 # Local IDE
 .cursor/
+*.keystore
+*.jks

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-06-03 15:24:01Z" end-time="2026-06-03 15:24:02Z" duration="0,0581073">
+  <test-suite type="TestSuite" id="1000" name="Mergefall" fullname="Mergefall" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-06-03 15:24:01Z" end-time="2026-06-03 15:24:02Z" duration="0.058107" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1003" name="MergeSurvivor.Editor.dll" fullname="C:/Users/Xfeltech/OneDrive/Documents/GitHub/Android game/My project/Library/ScriptAssemblies/MergeSurvivor.Editor.dll" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-06-03 15:24:01Z" end-time="2026-06-03 15:24:02Z" duration="0.052470" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="96376" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1004" name="MergeSurvivor" fullname="MergeSurvivor" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-06-03 15:24:01Z" end-time="2026-06-03 15:24:02Z" duration="0.051982" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1005" name="Editor" fullname="MergeSurvivor.Editor" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-06-03 15:24:01Z" end-time="2026-06-03 15:24:02Z" duration="0.051799" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1001" name="BalanceSimulationEditorTests" fullname="MergeSurvivor.Editor.BalanceSimulationEditorTests" classname="MergeSurvivor.Editor.BalanceSimulationEditorTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-06-03 15:24:01Z" end-time="2026-06-03 15:24:02Z" duration="0.050928" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1002" name="BalanceSimulator_ProducesValidCsvAndSummary" fullname="MergeSurvivor.Editor.BalanceSimulationEditorTests.BalanceSimulator_ProducesValidCsvAndSummary" methodname="BalanceSimulator_ProducesValidCsvAndSummary" classname="MergeSurvivor.Editor.BalanceSimulationEditorTests" runstate="Runnable" seed="379033104" result="Failed" start-time="2026-06-03 15:24:02Z" end-time="2026-06-03 15:24:02Z" duration="0.040165" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[  win_rate should be numeric.
+  Expected: True
+  But was:  False
+]]></message>
+                <stack-trace><![CDATA[at MergeSurvivor.Editor.BalanceSimulationEditorTests.BalanceSimulator_ProducesValidCsvAndSummary () [0x000f6] in C:\Users\Xfeltech\OneDrive\Documents\GitHub\Android game\My project\Assets\_Project\Editor\BalanceSimulationEditorTests.cs:32
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[BalanceSim] Report generated: C:\Users\Xfeltech\OneDrive\Documents\GitHub\Android game\My project\Logs/balance-sim-standard.csv
+[BalanceSim] Summary generated: C:\Users\Xfeltech\OneDrive\Documents\GitHub\Android game\My project\Logs/balance-sim-summary-standard.md
+[BalanceSim] Latest aliases updated: C:\Users\Xfeltech\OneDrive\Documents\GitHub\Android game\My project\Logs/balance-sim.csv and C:\Users\Xfeltech\OneDrive\Documents\GitHub\Android game\My project\Logs/balance-sim-summary.md
+Saving results to: C:/Users/Xfeltech/AppData/LocalLow/Xfeltech/Mergefall\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

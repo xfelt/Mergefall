@@ -51,5 +51,30 @@ namespace MergeSurvivor.Data
         {
             return Resources.Load<RemoteConfigSimulation>($"{ResourceFolder}/RemoteConfigSimulation");
         }
+
+        public static CharacterCatalog LoadCharacterCatalog()
+        {
+            return Resources.Load<CharacterCatalog>($"{ResourceFolder}/CharacterCatalog");
+        }
+
+        public static CoinPackCatalog LoadCoinPackCatalog()
+        {
+            return Resources.Load<CoinPackCatalog>($"{ResourceFolder}/CoinPackCatalog");
+        }
+
+        public static GachaConfig LoadGachaConfig()
+        {
+            return Resources.Load<GachaConfig>($"{ResourceFolder}/GachaConfig");
+        }
+
+        public static DailyRewardTable LoadDailyRewardTable()
+        {
+            return Resources.Load<DailyRewardTable>($"{ResourceFolder}/DailyRewardTable");
+        }
+
+        public static PrestigeConfig LoadPrestigeConfig()
+        {
+            return Resources.Load<PrestigeConfig>($"{ResourceFolder}/PrestigeConfig");
+        }
     }
 }

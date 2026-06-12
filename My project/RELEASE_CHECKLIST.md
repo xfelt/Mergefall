@@ -42,7 +42,10 @@ Use this checklist before shipping an Android build to internal test, closed/ope
 - [ ] **Target audience**: Age groups and store presence options.
 - [ ] **Privacy policy**: URL set (see below).
 - [ ] **App access**: If restricted (e.g. login), provide test credentials or instructions for reviewers.
-- [ ] **Ads declaration**: If the app shows ads, declare it and complete ad provider details (e.g. AdMob).
+- [ ] **Ads declaration**: The app shows rewarded ads (AdMob) — declare it and complete ad provider details.
+- [ ] **Data safety**: Complete the Data safety form covering analytics, device/ad identifiers, and purchase data (Firebase + AdMob + IAP).
+- [ ] **Gacha odds disclosure**: The Lucky Chest is a loot box — disclose drop-rate odds (shown in-game) and declare the mechanic per Google Play policy.
+- [ ] **In-app products**: Create the coin-pack products in Play Console matching `AppPlatformConfig.CoinPackProductIds` (`gems_pouch`, `gems_stack`, `gems_chest`, `gems_vault`, `gems_hoard`; `starter_bundle` = non-consumable). Set prices and activate them.
 
 ---
 
@@ -63,8 +66,8 @@ Use this checklist before shipping an Android build to internal test, closed/ope
 
 | What | Where |
 |------|--------|
-| **Google Play Billing (in-app products)** | **AppPlatformConfig** asset: Create via **Merge Survivor → Platform Config**, place in `Resources/` as **AppPlatformConfig**. Set **Billing Product IDs** (e.g. `premium_pack_01`). Wire this in **PlatformServiceFactory** / **StoreServiceGooglePlay** (replace stub with real Play Billing implementation). |
-| **AdMob ad unit IDs** | Same **AppPlatformConfig**: Set **Ad Unit Rewarded** and **Ad Unit Interstitial** (e.g. `ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY`). Used by **AdsServiceAdMob** / **PlatformServiceFactory.CreateAds()**. Do not commit real IDs if they are environment-specific; use Remote Config or build-time substitution for variants. |
+| **Google Play Billing (in-app products)** | **AppPlatformConfig** asset: already created at `Assets/_Project/Resources/AppPlatformConfig.asset` (product IDs pre-filled to match `DATA_SAFETY.md`). Adjust **Billing Product Premium Pack** and the **Coin Pack Product IDs** array there if products change. To enable real billing: add the In-App Purchasing package, add `UnityEngine.Purchasing` to `MergeSurvivor.Platform.asmdef`, rename `Platform/StoreServiceGooglePlay.cs.off` → `.cs`, add the `MERGE_SURVIVOR_USE_IAP` define, and uncomment the factory branch in `PlatformServiceFactory.CreateStore`. Gem grants on purchase are handled by `StorefrontService` (no extra wiring needed). |
+| **AdMob ad unit IDs** | Same **AppPlatformConfig**: currently set to **Google's official test ad unit IDs** — safe for development, must be replaced with your production units (e.g. `ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY`) before release. Used by **AdsServiceAdMob** / **PlatformServiceFactory.CreateAds()**. Do not commit real IDs if they are environment-specific; use Remote Config or build-time substitution for variants. |
 | **Firebase** | **google-services.json**: Download from Firebase Console (Project settings → Your apps → Android app). Place in project root (or `Assets/` if your setup expects it). Do not commit if it contains secrets; use a template and CI to inject. **Firebase project ID** can be set in **AppPlatformConfig** for reference. **Remote Config / Analytics** are wired via **RemoteConfigServiceFirebase** and **AnalyticsServiceFirebase**; ensure the app is registered in Firebase with the same package name. |
 
 Summary:
@@ -104,7 +107,8 @@ These steps cover the visual/audio/tutorial pass (Phases A–D). See `ASSETS.md`
 
 ## Pre-release quick checks
 
-- [ ] Run **PlayMode tests** (bootstrap, merge, buttons, board unlock, combat modifiers; full run flow; save/load).
-- [ ] Run **Editor test**: **Balance simulation** produces valid CSV and summary.
+- [ ] Run **PlayMode tests** (bootstrap, merge, buttons, board unlock, combat modifiers; full run flow; save/load; **MonetizationTests**: gacha/collection/daily/prestige/storefront).
+- [ ] Run **Editor test**: **Balance simulation** produces valid CSV and summary. *(Note: this asserts numeric CSV via culture-sensitive parsing and currently fails on non-`en-US` machines, e.g. fr-FR — a pre-existing balance-tool culture bug, unrelated to gameplay/monetization.)*
+- [ ] **Monetization smoke** (stubs simulate success in-editor): buy a coin pack → Gems granted; Lucky Chest pull → hero + dupe→shards + pity; equip a hero → squad power rises; win → Double Reward ad doubles gold; lose → Revive ad continues the run; claim the daily; prestige at the unlock wave → multiplier compounds.
 - [ ] Smoke test on a physical Android device: login/guest, one full run (spawn, merge, fight, rewards), and return to hub.
 - [ ] Confirm **privacy policy** and **store listing** are complete and **Ads** (if any) declared.

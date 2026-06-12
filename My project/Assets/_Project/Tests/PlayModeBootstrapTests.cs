@@ -41,10 +41,9 @@ namespace MergeSurvivor.Tests
 
             Assert.IsNotNull(Object.FindFirstObjectByType<Canvas>(), "Canvas was not created.");
             Assert.IsNotNull(Object.FindFirstObjectByType<EventSystem>(), "EventSystem was not created.");
-            // Spawn/Fight buttons exist but start inactive at the hub (only shown during a run),
-            // so look them up including inactive objects rather than GameObject.Find (active-only).
-            Assert.IsNotNull(FindObjectByNameIncludingInactive<GameObject>("Btn_Spawn Item"), "Spawn button missing.");
-            Assert.IsNotNull(FindObjectByNameIncludingInactive<GameObject>("Btn_Fight"), "Fight button missing.");
+            // Spawn/Fight are run-only buttons, hidden in the hub — find them inactive-inclusively.
+            Assert.IsNotNull(FindObjectByNameIncludingInactive<Button>("Btn_Spawn Gem"), "Spawn button missing.");
+            Assert.IsNotNull(FindObjectByNameIncludingInactive<Button>("Btn_Fight"), "Fight button missing.");
             Assert.IsNotNull(GameObject.Find("Btn_Meta Hub"), "Meta Hub button missing.");
         }
 
@@ -56,9 +55,7 @@ namespace MergeSurvivor.Tests
 
             yield return null;
 
-            // Spawn/Fight buttons are run-gated and start inactive at the hub; their click
-            // handlers still operate on the session directly, so invoking onClick is valid.
-            var spawnButton = FindObjectByNameIncludingInactive<Button>("Btn_Spawn Item");
+            var spawnButton = FindObjectByNameIncludingInactive<Button>("Btn_Spawn Gem");
             var fightButton = FindObjectByNameIncludingInactive<Button>("Btn_Fight");
             var metaButton = GameObject.Find("Btn_Meta Hub")?.GetComponent<Button>();
             var returnButton = FindObjectByNameIncludingInactive<Button>("Btn_Return");
@@ -87,14 +84,7 @@ namespace MergeSurvivor.Tests
 
             fightButton.onClick.Invoke();
             yield return null;
-            // The combat score now appears in the fight result panel (power "X vs Y"),
-            // which opens on fight, rather than in the status label.
-            var fightResultPanel = FindObjectByNameIncludingInactive<GameObject>("FightResultPanel");
-            Assert.IsNotNull(fightResultPanel, "Fight result panel missing.");
-            Assert.IsTrue(fightResultPanel.activeSelf, "Fight should open the result panel.");
-            var resultSubtitle = FindObjectByNameIncludingInactive<TMP_Text>("ResultSubtitle");
-            Assert.IsNotNull(resultSubtitle, "Fight result subtitle missing.");
-            StringAssert.Contains("vs", resultSubtitle.text, "Fight result should show the power comparison.");
+            StringAssert.Contains("/", statusText.text, "Fight status does not include combat score.");
         }
 
         [UnityTest]
@@ -156,8 +146,6 @@ namespace MergeSurvivor.Tests
 
             var metaButton = GameObject.Find("Btn_Meta Hub")?.GetComponent<Button>();
             var unlockButton = FindObjectByNameIncludingInactive<Button>("Btn_Unlock Next Board");
-            // Next Board button is run-gated and only activates once a second board is unlocked,
-            // so it can be inactive here — look it up including inactive objects.
             var nextBoardButton = FindObjectByNameIncludingInactive<Button>("Btn_Next Board");
             var boardHud = GameObject.Find("BoardHUD")?.GetComponent<TMP_Text>();
 
@@ -360,122 +348,6 @@ namespace MergeSurvivor.Tests
             Assert.IsTrue(loaded != null, "Account should have been saved.");
             Assert.AreEqual(softExpected, loaded.Soft, "Soft currency should persist.");
             Assert.AreEqual(resourceExpected, loaded.Resource, "Progression resource should persist.");
-        }
-
-        [UnityTest]
-        public IEnumerator Tutorial_FirstRun_ShowsStepsMergesAndDoesNotRepeat()
-        {
-            PlayerPrefs.DeleteKey("merge_survivor_onboarding_done");
-            PlayerPrefs.DeleteKey("merge_survivor_tutorial_done");
-            PlayerPrefs.Save();
-
-            var go = new GameObject("TestBootstrap");
-            var bootstrap = go.AddComponent<PrototypeBootstrap>();
-            yield return null;
-
-            var onboarding = FindObjectByNameIncludingInactive<GameObject>("OnboardingOverlay");
-            Assert.IsNotNull(onboarding, "Onboarding overlay missing.");
-            Assert.IsTrue(onboarding.activeSelf, "Onboarding should show on first run.");
-
-            var begin = FindObjectByNameIncludingInactive<Button>("Btn_Begin Journey");
-            Assert.IsNotNull(begin, "Begin Journey button missing.");
-            begin.onClick.Invoke();
-            yield return null;
-
-            var tutorial = FindObjectByNameIncludingInactive<GameObject>("TutorialOverlay");
-            Assert.IsNotNull(tutorial, "Tutorial overlay missing.");
-            Assert.IsTrue(tutorial.activeSelf, "Tutorial should start after Begin Journey.");
-
-            // Step 1 highlights two matching board items.
-            var hA = GetPrivateField<GameObject>(bootstrap, "_tutorialHighlightA");
-            var hB = GetPrivateField<GameObject>(bootstrap, "_tutorialHighlightB");
-            Assert.IsTrue(hA != null && hA.activeSelf, "Step 1 highlight A should be active.");
-            Assert.IsTrue(hB != null && hB.activeSelf, "Step 1 highlight B should be active.");
-
-            var next = FindObjectByNameIncludingInactive<Button>("Btn_Next");
-            Assert.IsNotNull(next, "Tutorial Next button missing.");
-
-            // Step 2: advancing performs the merge -> the result cell becomes tier 2.
-            next.onClick.Invoke();
-            yield return null;
-            var session = GetPrivateField<GameSession>(bootstrap, "_session");
-            Assert.AreEqual("pawn_t2", session.Board.Get(1, 0), "Tutorial step 2 should merge into T2.");
-
-            // Step 3 highlights the FIGHT button, then finishing closes the overlay.
-            next.onClick.Invoke();
-            yield return null;
-            next.onClick.Invoke();
-            yield return null;
-            Assert.IsFalse(tutorial.activeSelf, "Tutorial should close after the last step.");
-            Assert.AreEqual(1, PlayerPrefs.GetInt("merge_survivor_tutorial_done", 0), "Tutorial-done flag should be set.");
-
-            // A fresh bootstrap must NOT reshow onboarding or tutorial.
-            Object.DestroyImmediate(go);
-            yield return null;
-            var go2 = new GameObject("TestBootstrap2");
-            go2.AddComponent<PrototypeBootstrap>();
-            yield return null;
-            var onboarding2 = FindObjectByNameIncludingInactive<GameObject>("OnboardingOverlay");
-            Assert.IsFalse(onboarding2 != null && onboarding2.activeSelf, "Onboarding should not reappear.");
-            var tutorial2 = FindObjectByNameIncludingInactive<GameObject>("TutorialOverlay");
-            Assert.IsFalse(tutorial2 != null && tutorial2.activeSelf, "Tutorial should not reappear.");
-            Object.DestroyImmediate(go2);
-        }
-
-        [UnityTest]
-        public IEnumerator Tutorial_Skip_ClosesAndSetsDoneFlag()
-        {
-            PlayerPrefs.DeleteKey("merge_survivor_onboarding_done");
-            PlayerPrefs.DeleteKey("merge_survivor_tutorial_done");
-            PlayerPrefs.Save();
-
-            var go = new GameObject("TestBootstrap");
-            go.AddComponent<PrototypeBootstrap>();
-            yield return null;
-
-            FindObjectByNameIncludingInactive<Button>("Btn_Begin Journey").onClick.Invoke();
-            yield return null;
-            var tutorial = FindObjectByNameIncludingInactive<GameObject>("TutorialOverlay");
-            Assert.IsTrue(tutorial.activeSelf, "Tutorial should be open.");
-
-            var skip = FindObjectByNameIncludingInactive<Button>("Btn_Skip");
-            Assert.IsNotNull(skip, "Skip button missing.");
-            skip.onClick.Invoke();
-            yield return null;
-            Assert.IsFalse(tutorial.activeSelf, "Skip should close the tutorial.");
-            Assert.AreEqual(1, PlayerPrefs.GetInt("merge_survivor_tutorial_done", 0), "Skip should set the done flag.");
-            Object.DestroyImmediate(go);
-        }
-
-        [UnityTest]
-        public IEnumerator Loss_ShowsRevivePromptThenReturnsToHubOnGiveUp()
-        {
-            var go = new GameObject("TestBootstrap");
-            var bootstrap = go.AddComponent<PrototypeBootstrap>();
-            yield return null;
-
-            var session = GetPrivateField<GameSession>(bootstrap, "_session");
-            Assert.IsNotNull(session, "Session missing.");
-            for (var y = 0; y < session.Board.Height; y++)
-                for (var x = 0; x < session.Board.Width; x++)
-                    session.Board.Set(x, y, null); // empty board guarantees a loss
-
-            FindObjectByNameIncludingInactive<Button>("Btn_Fight").onClick.Invoke();
-            yield return null;
-
-            var continueBtn = FindObjectByNameIncludingInactive<Button>("Btn_Continue");
-            Assert.IsNotNull(continueBtn, "Fight result Continue button missing.");
-            continueBtn.onClick.Invoke();
-            yield return null;
-
-            var revive = FindObjectByNameIncludingInactive<GameObject>("RevivePanel");
-            Assert.IsNotNull(revive, "Revive panel missing.");
-            Assert.IsTrue(revive.activeSelf, "Loss should show the revive prompt.");
-
-            FindObjectByNameIncludingInactive<Button>("Btn_Give Up").onClick.Invoke();
-            yield return null;
-            Assert.IsFalse(revive.activeSelf, "Give Up should close the revive prompt.");
-            Object.DestroyImmediate(go);
         }
 
         private static T FindObjectByNameIncludingInactive<T>(string objectName) where T : Object

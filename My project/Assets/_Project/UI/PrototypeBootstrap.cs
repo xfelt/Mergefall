@@ -8,6 +8,8 @@ using MergeSurvivor.Platform;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.UI;
@@ -15,7 +17,7 @@ using UnityEngine.InputSystem.UI;
 
 namespace MergeSurvivor.UI
 {
-    public sealed class PrototypeBootstrap : MonoBehaviour
+    public sealed partial class PrototypeBootstrap : MonoBehaviour
     {
         [SerializeField] private ItemVisualCatalog itemVisualCatalog;
         [SerializeField] private Sprite premiumIconSprite;
@@ -43,15 +45,12 @@ namespace MergeSurvivor.UI
         [SerializeField] private AudioClip sfxFightWin;
         [Tooltip("Optional. Fight panel when you lose.")]
         [SerializeField] private AudioClip sfxFightLoss;
-        [Tooltip("Optional. Plays when a fight begins.")]
-        [SerializeField] private AudioClip sfxFightStart;
-        [Tooltip("Optional. Looping background music.")]
-        [SerializeField] private AudioClip musicLoop;
 
         private GameSession _session;
         private AudioSource _uiAudio;
-        private AudioSource _musicAudio;
+        private AudioManager _audio;
         private Image _boardBackgroundImage;
+        private Image _backdropImage;
         private Image _enemyPortraitImage;
         private ItemDatabase _items;
         private BoardCatalog _boardCatalog;
@@ -68,23 +67,28 @@ namespace MergeSurvivor.UI
         private TMP_Text _resourceLabel;
         private GameObject _metaPanel;
         private GameObject _fightResultPanel;
-        private GameObject _revivePanel;
         private TMP_Text _fightResultTitle;
         private TMP_Text _fightResultSubtitle;
         private TMP_Text _fightResultRewards;
+        private Image _playerBarFill;
+        private Image _enemyBarFill;
+        private TMP_Text _playerPowerLabel;
+        private TMP_Text _enemyPowerLabel;
+        private GameObject _fightContinueButton;
+        private bool _resolvingFight;
         private GameObject _onboardingOverlay;
-        private Canvas _canvas;
         private GameObject _tutorialOverlay;
-        private GameObject _tutorialHighlightA;
-        private GameObject _tutorialHighlightB;
+        private GameObject _tutorialHighlightHolder;
         private TMP_Text _tutorialText;
-        private GameObject _tutorialNextButton;
-        private int _tutorialStep;
-        private const string TutorialDoneKey = "merge_survivor_tutorial_done";
+        private TMP_Text _tutorialStepLabel;
+        private bool _tutorialActive;
+        private bool _tutorialNext;
+        private bool _tutorialSkip;
         private GameObject _nextBoardButton;
         private GameObject _boardSelectPanel;
         private (int x, int y)? _selected;
         private readonly List<CellView> _cells = new();
+        private readonly List<Image> _tutorialHighlights = new();
 
         private bool _isInRun;
         private bool _boardSelectForStartRun;
@@ -96,6 +100,7 @@ namespace MergeSurvivor.UI
         private GameObject _boardSelectButton;
 
         private const string OnboardingDoneKey = "merge_survivor_onboarding_done";
+        private const string TutorialDoneKey = "merge_survivor_tutorial_done";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoSpawn()
@@ -114,7 +119,9 @@ namespace MergeSurvivor.UI
             RefreshAll();
             RefreshRunStateUI();
             SetStatus("At hub. Start a run to play.");
+            _audio.PlayMusic(AudioManager.MusicHub);
             ShowOnboardingIfFirstTime();
+            MaybeShowDailyReward();
         }
 
         private void EnsureUiAudio()
@@ -123,24 +130,7 @@ namespace MergeSurvivor.UI
             if (_uiAudio == null) _uiAudio = gameObject.AddComponent<AudioSource>();
             _uiAudio.playOnAwake = false;
             _uiAudio.spatialBlend = 0f;
-
-            // Dedicated looping source for background music so SFX one-shots don't interrupt it.
-            _musicAudio = gameObject.AddComponent<AudioSource>();
-            _musicAudio.playOnAwake = false;
-            _musicAudio.loop = true;
-            _musicAudio.spatialBlend = 0f;
-            _musicAudio.volume = 0.35f;
-            if (musicLoop != null)
-            {
-                _musicAudio.clip = musicLoop;
-                _musicAudio.Play();
-            }
-        }
-
-        private void PlayUiOneShot(AudioClip clip)
-        {
-            if (clip == null || _uiAudio == null) return;
-            _uiAudio.PlayOneShot(clip);
+            _audio = AudioManager.Ensure();
         }
 
         private void SetupServices()
@@ -237,6 +227,9 @@ namespace MergeSurvivor.UI
             var simulationOverrides = simulation != null ? simulation.ToOverrideDictionary() : null;
             BalanceRemoteConfigApplier.Apply(remoteConfig, _combatConfig, economy, simulationOverrides);
 
+            // Meta/monetization services (collection, gacha, daily, prestige, storefront).
+            SetupMonetizationServices(save, ads, store, analytics);
+
             _session = new GameSession(
                 new BoardState(4, 4),
                 _boardCatalog,
@@ -249,21 +242,29 @@ namespace MergeSurvivor.UI
                 _inventory,
                 _progression,
                 ads,
-                analytics);
+                analytics,
+                _collection,
+                _prestige);
         }
 
         private void BuildUi()
         {
             EnsureFallbackCamera();
+            EnsurePostFx();
             EnsureEventSystem();
             var canvas = EnsureCanvas();
-            _canvas = canvas;
             var root = Ui("Root", canvas.transform);
             var rootRt = root.GetComponent<RectTransform>();
             Stretch(rootRt);
-            // Keep all content (notably the top HUD bar) inside the device safe area so it
-            // is not clipped by a notch / status bar. On hardware without insets this is a no-op.
+            // Keep all content inside the device safe area (no-op when no notch insets).
             ApplySafeArea(rootRt);
+
+            // Full-screen themed backdrop so empty areas read as desert atmosphere, not black.
+            var backdrop = Ui("Backdrop", root.transform);
+            Stretch(backdrop.GetComponent<RectTransform>());
+            _backdropImage = backdrop.AddComponent<Image>();
+            _backdropImage.color = DesertTheme.BgPrimary;
+            _backdropImage.raycastTarget = false;
 
             var hudBar = Ui("HudBar", root.transform);
             var hudBarRt = hudBar.GetComponent<RectTransform>();
@@ -369,19 +370,22 @@ namespace MergeSurvivor.UI
             hudRt.offsetMax = new Vector2(-16, 0);
             _hud.color = DesertTheme.TextSecondary;
 
-            _status = Label("Status", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -96), DesertTheme.FontSizeCaption);
-            _status.color = DesertTheme.TextSecondary;
+            _status = Label("Status", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -150), DesertTheme.FontSizeBody);
+            _status.color = DesertTheme.TextPrimary;
             var statusRt = _status.GetComponent<RectTransform>();
-            statusRt.sizeDelta = new Vector2(-32, 22);
+            statusRt.sizeDelta = new Vector2(-32, 40);
 
-            _boardHud = Label("BoardHUD", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -116), DesertTheme.FontSizeCaption);
+            _boardHud = Label("BoardHUD", root.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -198), DesertTheme.FontSizeCaption);
             _boardHud.color = DesertTheme.TextSecondary;
 
             var boardContainer = Ui("BoardContainer", root.transform);
             var containerRt = boardContainer.GetComponent<RectTransform>();
+            // Square board sized to fill the canvas width (4 cells + 3 gaps), nudged up
+            // to leave room for the bottom action bar.
+            var boardSide = DesertTheme.GridColumns * DesertTheme.GridCellSize + (DesertTheme.GridColumns - 1) * DesertTheme.GridSpacing;
             containerRt.anchorMin = containerRt.anchorMax = new Vector2(0.5f, 0.5f);
-            containerRt.sizeDelta = new Vector2(DesertTheme.GridColumns * (DesertTheme.GridCellSize + DesertTheme.GridSpacing), DesertTheme.GridColumns * (DesertTheme.GridCellSize + DesertTheme.GridSpacing));
-            containerRt.anchoredPosition = new Vector2(0, 10);
+            containerRt.sizeDelta = new Vector2(boardSide, boardSide);
+            containerRt.anchoredPosition = new Vector2(0, 60);
 
             var boardBg = Ui("BoardBg", boardContainer.transform);
             Stretch(boardBg.GetComponent<RectTransform>());
@@ -414,7 +418,9 @@ namespace MergeSurvivor.UI
                 pieceImage.color = PlaceholderArt.Tier1;
                 pieceImage.preserveAspect = true;
                 pieceImage.enabled = false;
-                var txt = Label("L", co.transform, Vector2.zero, Vector2.one, Vector2.zero, 11);
+                var txt = Label("L", co.transform, new Vector2(0f, 0f), new Vector2(1f, 0.30f), Vector2.zero, DesertTheme.FontSizeCaption);
+                txt.fontStyle = FontStyles.Bold;
+                txt.color = DesertTheme.TextPrimary;
                 txt.transform.SetAsLastSibling();
                 var cv = co.AddComponent<CellView>();
                 cv.Bind(x, y, txt, pieceImage, itemVisualCatalog, mergeVfxPrefab);
@@ -424,27 +430,68 @@ namespace MergeSurvivor.UI
                 _cells.Add(cv);
             }
 
-            _startRunButton = ButtonGo("Start Run", root.transform, new Vector2(0, -200), OnStartRun, panelButtonSprite);
+            // Bottom action bar: two auto-laid-out rows so buttons never overlap and
+            // expand to share the width. Run-state toggles which buttons are visible
+            // (RefreshRunStateUI); layout groups skip inactive children automatically.
+            var actionArea = Ui("ActionArea", root.transform);
+            var aaRt = actionArea.GetComponent<RectTransform>();
+            aaRt.anchorMin = new Vector2(0.04f, 0f);
+            aaRt.anchorMax = new Vector2(0.96f, 0f);
+            aaRt.pivot = new Vector2(0.5f, 0f);
+            aaRt.sizeDelta = new Vector2(0, 158);
+            aaRt.anchoredPosition = new Vector2(0, 44);
+            var aaLayout = actionArea.AddComponent<VerticalLayoutGroup>();
+            aaLayout.spacing = 16;
+            aaLayout.childAlignment = TextAnchor.LowerCenter;
+            aaLayout.childControlWidth = true;
+            aaLayout.childControlHeight = true;
+            aaLayout.childForceExpandWidth = true;
+            aaLayout.childForceExpandHeight = false;
+
+            var rowPrimary = ButtonRow("RowPrimary", actionArea.transform);
+            var rowSecondary = ButtonRow("RowSecondary", actionArea.transform);
+
+            _startRunButton = ButtonGo("Start Run", rowPrimary.transform, Vector2.zero, OnStartRun, panelButtonSprite);
             _startRunButton.GetComponent<Image>().color = DesertTheme.AccentGold;
             _startRunButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
-            _endRunButton = ButtonGo("End Run", root.transform, new Vector2(0, -200), OnEndRun, panelButtonSprite);
-            _endRunButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
-            _spawnButton = ButtonGo("Spawn Item", root.transform, new Vector2(-150, -200), OnSpawn, panelButtonSprite);
+            _spawnButton = ButtonGo("Spawn Gem", rowPrimary.transform, Vector2.zero, OnSpawn, panelButtonSprite);
             _spawnButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
-            _fightButton = ButtonGo("Fight", root.transform, new Vector2(0, -200), OnFight, panelButtonSprite);
+            _fightButton = ButtonGo("Fight", rowPrimary.transform, Vector2.zero, OnFight, panelButtonSprite);
             _fightButton.GetComponent<Image>().color = DesertTheme.BtnDanger;
-            var metaBtn = ButtonGo("Meta Hub", root.transform, new Vector2(150, -200), OpenMeta, panelButtonSprite);
+
+            var metaBtn = ButtonGo("Meta Hub", rowSecondary.transform, Vector2.zero, OpenMeta, panelButtonSprite);
             metaBtn.GetComponent<Image>().color = DesertTheme.AccentTurquoise;
             metaBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
-            _nextBoardButton = ButtonGo("Next Board", root.transform, new Vector2(-110, -260), OnNextBoard, panelButtonSprite);
+            _nextBoardButton = ButtonGo("Next Board", rowSecondary.transform, Vector2.zero, OnNextBoard, panelButtonSprite);
             _nextBoardButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
-            _boardSelectButton = ButtonGo("Board Select", root.transform, new Vector2(110, -260), () => OpenBoardSelect(forStartRun: false), panelButtonSprite);
+            _boardSelectButton = ButtonGo("Board Select", rowSecondary.transform, Vector2.zero, () => OpenBoardSelect(forStartRun: false), panelButtonSprite);
             _boardSelectButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+            _endRunButton = ButtonGo("End Run", rowSecondary.transform, Vector2.zero, OnEndRun, panelButtonSprite);
+            _endRunButton.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+
+            // Always-available economy/meta row (Shop, Heroes, Lucky Chest, Daily).
+            var rowTertiary = ButtonRow("RowTertiary", actionArea.transform);
+            var shopBtn = ButtonGo("Shop", rowTertiary.transform, Vector2.zero, OpenShop, panelButtonSprite);
+            shopBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
+            shopBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            var heroesBtn = ButtonGo("Heroes", rowTertiary.transform, Vector2.zero, OpenCollection, panelButtonSprite);
+            heroesBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+            var chestBtn = ButtonGo("Lucky Chest", rowTertiary.transform, Vector2.zero, OpenGacha, panelButtonSprite);
+            chestBtn.GetComponent<Image>().color = DesertTheme.AccentTurquoise;
+            chestBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            var dailyBtn = ButtonGo("Daily", rowTertiary.transform, Vector2.zero, OpenDaily, panelButtonSprite);
+            dailyBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+
             BuildMeta(root.transform);
             BuildBoardSelectPanel(root.transform);
             BuildFightResultPanel(root.transform);
             BuildOnboardingOverlay(root.transform);
             BuildTutorialOverlay(root.transform);
+            BuildShopPanel(root.transform);
+            BuildCollectionPanel(root.transform);
+            BuildGachaPanel(root.transform);
+            BuildDailyRewardPanel(root.transform);
+            BuildPrestigePanel(root.transform);
         }
 
         private void BuildOnboardingOverlay(Transform root)
@@ -455,25 +502,50 @@ namespace MergeSurvivor.UI
             var r = _onboardingOverlay.GetComponent<RectTransform>();
             Stretch(r);
 
-            var title = Label("Title", _onboardingOverlay.transform, new Vector2(0.5f, 0.80f), new Vector2(0.5f, 0.80f), Vector2.zero, 30);
+            // Centered card so the title + rules always read, regardless of aspect ratio.
+            var card = Ui("Card", _onboardingOverlay.transform);
+            var cardRt = card.GetComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRt.sizeDelta = new Vector2(880, 1020);
+            cardRt.anchoredPosition = Vector2.zero;
+            var cardBg = card.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { cardBg.sprite = panelBackgroundSprite; cardBg.type = Image.Type.Sliced; cardBg.color = Color.white; }
+            else cardBg.color = DesertTheme.PanelMid;
+
+            var title = Label("Title", card.transform, new Vector2(0.5f, 0.92f), new Vector2(0.5f, 0.92f), Vector2.zero, 64);
             title.text = "Mergefall";
             title.color = DesertTheme.AccentGold;
-            var subtitle = Label("Subtitle", _onboardingOverlay.transform, new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, DesertTheme.FontSizeBody);
+            title.GetComponent<RectTransform>().sizeDelta = new Vector2(820, 90);
+            var subtitle = Label("Subtitle", card.transform, new Vector2(0.5f, 0.85f), new Vector2(0.5f, 0.85f), Vector2.zero, 30);
             subtitle.text = "Board Quest";
             subtitle.color = DesertTheme.TextSecondary;
-            var body = Label("Body", _onboardingOverlay.transform, new Vector2(0.5f, 0.52f), new Vector2(0.5f, 0.52f), Vector2.zero, DesertTheme.FontSizeCaption);
-            // Use a plain bullet (U+2022, present in the default TMP font) \u2014 the previous
-            // decorative glyphs (U+2726/U+2694/U+26FA) are absent from LiberationSans and render as tofu.
-            body.text = "\u2022 Merge 3 identical crystals to forge a stronger one\n\u2022 Grow your caravan power, then tap Fight\n\u2022 Visit the Merchant Tent to upgrade";
-            body.GetComponent<RectTransform>().sizeDelta = new Vector2(460, 110);
+            subtitle.GetComponent<RectTransform>().sizeDelta = new Vector2(820, 44);
+
+            var howTo = Label("HowTo", card.transform, new Vector2(0.5f, 0.70f), new Vector2(0.5f, 0.70f), Vector2.zero, 26);
+            howTo.text = "How to play";
+            howTo.color = DesertTheme.AccentTurquoise;
+            howTo.GetComponent<RectTransform>().sizeDelta = new Vector2(820, 40);
+
+            var body = Label("Body", card.transform, new Vector2(0.5f, 0.40f), new Vector2(0.5f, 0.40f), Vector2.zero, 26, TextAlignmentOptions.TopLeft);
+            body.text =
+                "1.  Merge 3 matching gems to forge a stronger gem.\n\n" +
+                "2.  Each gem adds to your squad power.\n\n" +
+                "3.  Tap FIGHT to clash with the incoming wave.\n\n" +
+                "4.  Spend the loot at the Merchant Tent to grow.";
+            body.GetComponent<RectTransform>().sizeDelta = new Vector2(720, 360);
             body.color = DesertTheme.TextPrimary;
-            var playBtn = ButtonGo("Begin Journey", _onboardingOverlay.transform, new Vector2(0, -80), () =>
+
+            var playBtn = ButtonGo("Begin Journey", card.transform, Vector2.zero, () =>
             {
                 PlayerPrefs.SetInt(OnboardingDoneKey, 1);
                 PlayerPrefs.Save();
                 _onboardingOverlay.SetActive(false);
-                StartTutorial();
             }, panelButtonSprite);
+            var playRt = playBtn.GetComponent<RectTransform>();
+            playRt.anchorMin = playRt.anchorMax = new Vector2(0.5f, 0.08f);
+            playRt.sizeDelta = new Vector2(520, 96);
+            playRt.anchoredPosition = Vector2.zero;
             playBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
             playBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
             _onboardingOverlay.SetActive(false);
@@ -485,244 +557,291 @@ namespace MergeSurvivor.UI
             _onboardingOverlay.SetActive(true);
         }
 
-        // ----- First-run interactive tutorial (highlight items -> show merge -> highlight Fight) -----
-
         private void BuildTutorialOverlay(Transform root)
         {
             _tutorialOverlay = Ui("TutorialOverlay", root);
-            var dim = _tutorialOverlay.AddComponent<Image>();
-            dim.color = new Color(0f, 0f, 0f, 0.62f);
-            dim.raycastTarget = true; // block board taps while coaching
             Stretch(_tutorialOverlay.GetComponent<RectTransform>());
 
-            _tutorialHighlightA = MakeHighlight(_tutorialOverlay.transform);
-            _tutorialHighlightB = MakeHighlight(_tutorialOverlay.transform);
+            // Dimmer: darkens the scene and absorbs stray taps during the coached steps.
+            var dimmer = Ui("TutorialDimmer", _tutorialOverlay.transform);
+            Stretch(dimmer.GetComponent<RectTransform>());
+            var dimImg = dimmer.AddComponent<Image>();
+            dimImg.color = new Color(0.04f, 0.03f, 0.02f, 0.62f);
+            dimImg.raycastTarget = true; // block board interaction; advance is via the Next button
 
-            var card = Ui("TutorialCard", _tutorialOverlay.transform);
-            var cardImg = card.AddComponent<Image>();
-            if (panelBackgroundSprite != null) { cardImg.sprite = panelBackgroundSprite; cardImg.type = Image.Type.Sliced; cardImg.color = Color.white; }
-            else cardImg.color = DesertTheme.PanelMid;
-            var cardRt = card.GetComponent<RectTransform>();
-            cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0f);
-            cardRt.pivot = new Vector2(0.5f, 0f);
-            cardRt.sizeDelta = new Vector2(740, 240);
-            cardRt.anchoredPosition = new Vector2(0, 70);
+            // Highlight holder sits above the dimmer so coach marks are clearly visible.
+            _tutorialHighlightHolder = Ui("TutorialHighlights", _tutorialOverlay.transform);
+            Stretch(_tutorialHighlightHolder.GetComponent<RectTransform>());
+            _tutorialHighlightHolder.GetComponent<RectTransform>().SetAsLastSibling();
 
-            var tutTitle = Label("TutTitle", card.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -30), DesertTheme.FontSizeHeading);
-            tutTitle.text = "How to play";
-            tutTitle.color = DesertTheme.AccentGold;
+            // Bottom banner with instruction text + Next / Skip.
+            var banner = Ui("TutorialBanner", _tutorialOverlay.transform);
+            var bannerRt = banner.GetComponent<RectTransform>();
+            bannerRt.anchorMin = new Vector2(0.06f, 0.17f);
+            bannerRt.anchorMax = new Vector2(0.94f, 0.40f);
+            bannerRt.offsetMin = bannerRt.offsetMax = Vector2.zero;
+            var bannerBg = banner.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { bannerBg.sprite = panelBackgroundSprite; bannerBg.type = Image.Type.Sliced; bannerBg.color = Color.white; }
+            else bannerBg.color = DesertTheme.PanelMid;
 
-            _tutorialText = Label("TutText", card.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 10), DesertTheme.FontSizeCaption);
-            _tutorialText.GetComponent<RectTransform>().sizeDelta = new Vector2(680, 96);
+            _tutorialStepLabel = Label("TutStep", banner.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -22), DesertTheme.FontSizeCaption);
+            _tutorialStepLabel.color = DesertTheme.AccentGold;
+
+            _tutorialText = Label("TutText", banner.transform, new Vector2(0.05f, 0.42f), new Vector2(0.95f, 0.86f), Vector2.zero, DesertTheme.FontSizeBody, TextAlignmentOptions.Center);
             _tutorialText.color = DesertTheme.TextPrimary;
+            _tutorialText.overflowMode = TextOverflowModes.Overflow;
 
-            var skip = ButtonGo("Skip", card.transform, new Vector2(-160, -88), SkipTutorial, panelButtonSprite);
-            skip.GetComponent<Image>().color = DesertTheme.BtnSecondary;
-            _tutorialNextButton = ButtonGo("Next", card.transform, new Vector2(160, -88), TutorialNext, panelButtonSprite);
-            _tutorialNextButton.GetComponent<Image>().color = DesertTheme.AccentGold;
-            _tutorialNextButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            var nextBtn = ButtonGo("Next", banner.transform, new Vector2(80, 24), () => _tutorialNext = true, panelButtonSprite);
+            var nextRt = nextBtn.GetComponent<RectTransform>();
+            nextRt.anchorMin = nextRt.anchorMax = new Vector2(0.5f, 0f);
+            nextRt.sizeDelta = new Vector2(150, DesertTheme.ButtonHeight);
+            nextRt.anchoredPosition = new Vector2(90, 30);
+            nextBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
+            nextBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+
+            var skipBtn = ButtonGo("Skip", banner.transform, new Vector2(-90, 30), () => _tutorialSkip = true, panelButtonSprite);
+            var skipRt = skipBtn.GetComponent<RectTransform>();
+            skipRt.anchorMin = skipRt.anchorMax = new Vector2(0.5f, 0f);
+            skipRt.sizeDelta = new Vector2(120, DesertTheme.ButtonHeight);
+            skipRt.anchoredPosition = new Vector2(-90, 30);
+            skipBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
 
             _tutorialOverlay.SetActive(false);
         }
 
-        private GameObject MakeHighlight(Transform parent)
+        private IEnumerator RunTutorial()
         {
-            var h = Ui("TutHighlight", parent);
-            var img = h.AddComponent<Image>();
-            if (panelButtonSprite != null) { img.sprite = panelButtonSprite; img.type = Image.Type.Sliced; }
-            var g = DesertTheme.AccentGold;
-            img.color = new Color(g.r, g.g, g.b, 0.42f);
-            img.raycastTarget = false;
-            var rt = h.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            h.SetActive(false);
-            return h;
-        }
-
-        // Public-ish entry: invoked by the onboarding "Begin Journey" button.
-        private void StartTutorial()
-        {
-            if (PlayerPrefs.GetInt(TutorialDoneKey, 0) != 0) return;
-            if (_session == null || _tutorialOverlay == null) return;
-            if (!_isInRun) StartRunInternal();
-            // Deterministic setup so the highlighted cells always contain a valid merge.
-            for (var yy = 0; yy < _session.Board.Height; yy++)
-            for (var xx = 0; xx < _session.Board.Width; xx++)
-                _session.Board.Set(xx, yy, null);
-            _session.Board.Set(0, 0, "pawn_t1");
-            _session.Board.Set(1, 0, "pawn_t1");
-            _session.Board.Set(2, 0, "pawn_t1");
-            RefreshAll();
+            _tutorialActive = true;
+            _tutorialSkip = false;
             _tutorialOverlay.SetActive(true);
             _tutorialOverlay.transform.SetAsLastSibling();
-            ShowTutorialStep(0);
+
+            var steps = new (string label, string text, System.Func<List<RectTransform>> targets)[]
+            {
+                ("Step 1 of 3", "Tap a gem, then tap a matching gem to swap them. Bring identical gems together!", GetMergePairTargets),
+                ("Step 2 of 3", "Line up 3 identical gems to merge them into a stronger tier — that grows your squad power.", GetBoardTargets),
+                ("Step 3 of 3", "When your squad is ready, tap the FIGHT button to battle the incoming wave!", GetFightButtonTargets),
+            };
+
+            foreach (var step in steps)
+            {
+                if (_tutorialSkip) break;
+                _tutorialStepLabel.text = step.label;
+                _tutorialText.text = step.text;
+                SetTutorialHighlights(step.targets());
+                _tutorialNext = false;
+                while (!_tutorialNext && !_tutorialSkip)
+                {
+                    PulseTutorialHighlights();
+                    yield return null;
+                }
+            }
+
+            EndTutorial();
         }
 
-        private void ShowTutorialStep(int step)
+        private void EndTutorial()
         {
-            _tutorialStep = step;
-            if (_tutorialHighlightA != null) _tutorialHighlightA.SetActive(false);
-            if (_tutorialHighlightB != null) _tutorialHighlightB.SetActive(false);
-            switch (step)
+            ClearTutorialHighlights();
+            if (_tutorialOverlay != null) _tutorialOverlay.SetActive(false);
+            _tutorialActive = false;
+            PlayerPrefs.SetInt(TutorialDoneKey, 1);
+            PlayerPrefs.Save();
+        }
+
+        private List<RectTransform> GetFightButtonTargets()
+        {
+            var list = new List<RectTransform>();
+            if (_fightButton != null) list.Add(_fightButton.GetComponent<RectTransform>());
+            return list;
+        }
+
+        private List<RectTransform> GetBoardTargets()
+        {
+            var list = new List<RectTransform>();
+            var container = _cells.Count > 0 ? _cells[0].transform.parent.parent : null;
+            if (container is RectTransform rt) list.Add(rt);
+            return list;
+        }
+
+        // Finds two board cells holding identical pieces (best teaching example), with fallbacks.
+        private List<RectTransform> GetMergePairTargets()
+        {
+            var list = new List<RectTransform>();
+            var byId = new Dictionary<string, CellView>();
+            foreach (var c in _cells)
             {
-                case 0:
-                    _tutorialText.text = "Tap matching crystals to merge them — three of a kind forge a stronger crystal.";
-                    HighlightCell(0, 0, _tutorialHighlightA);
-                    HighlightCell(1, 0, _tutorialHighlightB);
-                    SetTutorialNextLabel("Merge");
-                    break;
-                case 1:
-                    _session.TryMergeAt(1, 0); // perform the scripted merge so the result is visible
-                    RefreshAll();
-                    _tutorialText.text = "Nice! They merged into a stronger crystal. Keep merging to grow your power.";
-                    HighlightCell(1, 0, _tutorialHighlightA);
-                    SetTutorialNextLabel("Next");
-                    break;
-                case 2:
-                    _tutorialText.text = "When your caravan is strong enough, tap FIGHT to battle the wave.";
-                    if (_fightButton != null)
-                    {
-                        MoveHighlightTo(_fightButton.GetComponent<RectTransform>(), _tutorialHighlightA);
-                        _tutorialHighlightA.SetActive(true);
-                    }
-                    SetTutorialNextLabel("Got it");
-                    break;
-                default:
-                    FinishTutorial();
-                    break;
+                var id = _session.Board.Get(c.X, c.Y);
+                if (string.IsNullOrEmpty(id)) continue;
+                if (byId.TryGetValue(id, out var first))
+                {
+                    list.Add(first.GetComponent<RectTransform>());
+                    list.Add(c.GetComponent<RectTransform>());
+                    return list;
+                }
+                byId[id] = c;
+            }
+            // Fallback: highlight the first couple of filled cells, else the whole board.
+            foreach (var c in _cells)
+            {
+                if (string.IsNullOrEmpty(_session.Board.Get(c.X, c.Y))) continue;
+                list.Add(c.GetComponent<RectTransform>());
+                if (list.Count == 2) return list;
+            }
+            return list.Count > 0 ? list : GetBoardTargets();
+        }
+
+        private void SetTutorialHighlights(List<RectTransform> targets)
+        {
+            ClearTutorialHighlights();
+            if (targets == null) return;
+            foreach (var target in targets)
+            {
+                if (target == null) continue;
+                var go = Ui("Highlight", _tutorialHighlightHolder.transform);
+                var rt = go.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.sizeDelta = target.rect.size + new Vector2(18f, 18f);
+                rt.position = target.position;
+                var img = go.AddComponent<Image>();
+                if (panelButtonSprite != null) { img.sprite = panelButtonSprite; img.type = Image.Type.Sliced; }
+                img.color = new Color(DesertTheme.AccentGold.r, DesertTheme.AccentGold.g, DesertTheme.AccentGold.b, 0.35f);
+                img.raycastTarget = false;
+                _tutorialHighlights.Add(img);
             }
         }
 
-        private void TutorialNext() => ShowTutorialStep(_tutorialStep + 1);
-
-        private void SkipTutorial() => FinishTutorial();
-
-        private void FinishTutorial()
+        private void PulseTutorialHighlights()
         {
-            PlayerPrefs.SetInt(TutorialDoneKey, 1);
-            PlayerPrefs.Save();
-            if (_tutorialOverlay != null) _tutorialOverlay.SetActive(false);
-            if (_tutorialHighlightA != null) _tutorialHighlightA.SetActive(false);
-            if (_tutorialHighlightB != null) _tutorialHighlightB.SetActive(false);
+            var pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f);
+            foreach (var img in _tutorialHighlights)
+            {
+                if (img == null) continue;
+                var a = Mathf.Lerp(0.22f, 0.5f, pulse);
+                var c = img.color; c.a = a; img.color = c;
+                var s = Mathf.Lerp(1.0f, 1.08f, pulse);
+                img.rectTransform.localScale = new Vector3(s, s, 1f);
+            }
         }
 
-        private void SetTutorialNextLabel(string s)
+        private void ClearTutorialHighlights()
         {
-            var t = _tutorialNextButton != null ? _tutorialNextButton.GetComponentInChildren<TMP_Text>() : null;
-            if (t != null) t.text = s;
-        }
-
-        private void HighlightCell(int x, int y, GameObject highlight)
-        {
-            var idx = y * 4 + x;
-            if (idx < 0 || idx >= _cells.Count || highlight == null) return;
-            MoveHighlightTo(_cells[idx].GetComponent<RectTransform>(), highlight);
-            highlight.SetActive(true);
-        }
-
-        // Positions a highlight frame over a target RectTransform, in the overlay's local space.
-        private void MoveHighlightTo(RectTransform target, GameObject highlight)
-        {
-            if (target == null || highlight == null || _tutorialOverlay == null) return;
-            var overlayRt = _tutorialOverlay.GetComponent<RectTransform>();
-            var cam = (_canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay) ? _canvas.worldCamera : null;
-            var corners = new Vector3[4];
-            target.GetWorldCorners(corners);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(overlayRt, RectTransformUtility.WorldToScreenPoint(cam, corners[0]), cam, out var bl);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(overlayRt, RectTransformUtility.WorldToScreenPoint(cam, corners[2]), cam, out var tr);
-            var hrt = highlight.GetComponent<RectTransform>();
-            hrt.sizeDelta = (tr - bl) + new Vector2(18f, 18f);
-            hrt.anchoredPosition = (bl + tr) * 0.5f;
+            foreach (var img in _tutorialHighlights)
+                if (img != null) Destroy(img.gameObject);
+            _tutorialHighlights.Clear();
         }
 
         private void BuildFightResultPanel(Transform parent)
         {
+            // Full-screen modal: a dark scrim occludes the board, a centered card holds the result.
             _fightResultPanel = Ui("FightResultPanel", parent);
-            var bg = _fightResultPanel.AddComponent<Image>();
-            if (panelBackgroundSprite != null) { bg.sprite = panelBackgroundSprite; bg.type = Image.Type.Sliced; bg.color = Color.white; }
-            else bg.color = DesertTheme.PanelDark;
-            var r = _fightResultPanel.GetComponent<RectTransform>();
-            r.anchorMin = new Vector2(0.08f, 0.22f);
-            r.anchorMax = new Vector2(0.92f, 0.78f);
-            r.offsetMin = r.offsetMax = Vector2.zero;
+            Stretch(_fightResultPanel.GetComponent<RectTransform>());
+            var scrim = _fightResultPanel.AddComponent<Image>();
+            scrim.color = DesertTheme.BgOverlay;
 
-            _fightResultTitle = Label("ResultTitle", _fightResultPanel.transform, new Vector2(0.5f, 0.88f), new Vector2(0.5f, 0.88f), Vector2.zero, 32);
-            var enemyPortraitGo = Ui("EnemyPortrait", _fightResultPanel.transform);
+            var card = Ui("FightCard", _fightResultPanel.transform);
+            var cardRt = card.GetComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(0.07f, 0.20f);
+            cardRt.anchorMax = new Vector2(0.93f, 0.80f);
+            cardRt.offsetMin = cardRt.offsetMax = Vector2.zero;
+            var bg = card.AddComponent<Image>();
+            if (panelBackgroundSprite != null) { bg.sprite = panelBackgroundSprite; bg.type = Image.Type.Sliced; bg.color = Color.white; }
+            else bg.color = DesertTheme.PanelMid;
+
+            _fightResultTitle = Label("ResultTitle", card.transform, new Vector2(0.5f, 0.91f), new Vector2(0.5f, 0.91f), Vector2.zero, DesertTheme.FontSizeTitle);
+            _fightResultTitle.GetComponent<RectTransform>().sizeDelta = new Vector2(720, 72);
+            var enemyPortraitGo = Ui("EnemyPortrait", card.transform);
             var enemyPortraitRt = enemyPortraitGo.GetComponent<RectTransform>();
-            enemyPortraitRt.anchorMin = enemyPortraitRt.anchorMax = new Vector2(0.5f, 0.70f);
-            enemyPortraitRt.sizeDelta = new Vector2(96, 96);
+            enemyPortraitRt.anchorMin = enemyPortraitRt.anchorMax = new Vector2(0.5f, 0.74f);
+            enemyPortraitRt.sizeDelta = new Vector2(150, 150);
             enemyPortraitRt.anchoredPosition = Vector2.zero;
             _enemyPortraitImage = enemyPortraitGo.AddComponent<Image>();
             _enemyPortraitImage.preserveAspect = true;
             _enemyPortraitImage.raycastTarget = false;
             _enemyPortraitImage.enabled = false;
-            _fightResultSubtitle = Label("ResultSubtitle", _fightResultPanel.transform, new Vector2(0.5f, 0.54f), new Vector2(0.5f, 0.54f), Vector2.zero, DesertTheme.FontSizeHeading);
-            _fightResultRewards = Label("ResultRewards", _fightResultPanel.transform, new Vector2(0.5f, 0.36f), new Vector2(0.5f, 0.36f), Vector2.zero, DesertTheme.FontSizeBody);
-            _fightResultRewards.color = DesertTheme.AccentGold;
-            _fightResultRewards.GetComponent<RectTransform>().sizeDelta = new Vector2(300, 32);
 
-            var continueBtn = ButtonGo("Continue", _fightResultPanel.transform, new Vector2(0, -70), () =>
+            // Power-race bars: "Your Squad" (gold) vs the wave (red).
+            (_playerBarFill, _playerPowerLabel) = MakePowerBar(card.transform, 0.55f, "Your Squad", DesertTheme.AccentGold);
+            (_enemyBarFill, _enemyPowerLabel) = MakePowerBar(card.transform, 0.44f, "The Wave", DesertTheme.BtnDanger);
+
+            _fightResultSubtitle = Label("ResultSubtitle", card.transform, new Vector2(0.5f, 0.31f), new Vector2(0.5f, 0.31f), Vector2.zero, DesertTheme.FontSizeHeading);
+            _fightResultSubtitle.GetComponent<RectTransform>().sizeDelta = new Vector2(740, 48);
+            _fightResultRewards = Label("ResultRewards", card.transform, new Vector2(0.5f, 0.23f), new Vector2(0.5f, 0.23f), Vector2.zero, DesertTheme.FontSizeBody);
+            _fightResultRewards.color = DesertTheme.AccentGold;
+            _fightResultRewards.GetComponent<RectTransform>().sizeDelta = new Vector2(740, 40);
+
+            _fightContinueButton = ButtonGo("Continue", card.transform, Vector2.zero, () =>
             {
+                if (_resolvingFight) return; // ignore taps while the sequence is animating
                 _fightResultPanel.SetActive(false);
                 if (_lastFightWasLoss)
                 {
-                    // On loss, offer a revive before ending the run.
-                    ShowRevivePrompt();
+                    _lastFightWasLoss = false;
+                    EndRun();
                 }
             }, panelButtonSprite);
-            continueBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
-            continueBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            var contRt = _fightContinueButton.GetComponent<RectTransform>();
+            contRt.anchorMin = contRt.anchorMax = new Vector2(0.5f, 0.10f);
+            contRt.sizeDelta = new Vector2(480, 92);
+            contRt.anchoredPosition = Vector2.zero;
+            _fightContinueButton.GetComponent<Image>().color = DesertTheme.AccentGold;
+            _fightContinueButton.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            AddFightResultActions(card.transform);
             _fightResultPanel.SetActive(false);
-
-            BuildRevivePanel(parent);
         }
 
-        private void BuildRevivePanel(Transform parent)
+        // Builds a labeled horizontal power bar; returns the fill Image and the value label.
+        private (Image fill, TMP_Text value) MakePowerBar(Transform parent, float anchorY, string caption, Color fillColor)
         {
-            _revivePanel = Ui("RevivePanel", parent);
-            var bg = _revivePanel.AddComponent<Image>();
-            if (panelBackgroundSprite != null) { bg.sprite = panelBackgroundSprite; bg.type = Image.Type.Sliced; bg.color = Color.white; }
-            else bg.color = DesertTheme.PanelDark;
-            var r = _revivePanel.GetComponent<RectTransform>();
-            r.anchorMin = new Vector2(0.12f, 0.34f);
-            r.anchorMax = new Vector2(0.88f, 0.66f);
-            r.offsetMin = r.offsetMax = Vector2.zero;
+            var row = Ui($"PowerBar_{caption}", parent);
+            var rowRt = row.GetComponent<RectTransform>();
+            rowRt.anchorMin = new Vector2(0.08f, anchorY);
+            rowRt.anchorMax = new Vector2(0.92f, anchorY);
+            rowRt.sizeDelta = new Vector2(0, 84);
+            rowRt.anchoredPosition = Vector2.zero;
 
-            var title = Label("ReviveTitle", _revivePanel.transform, new Vector2(0.5f, 0.86f), new Vector2(0.5f, 0.86f), Vector2.zero, DesertTheme.FontSizeHeading);
-            title.text = "You fell in battle";
-            title.color = DesertTheme.TextDefeat;
-            var body = Label("ReviveBody", _revivePanel.transform, new Vector2(0.5f, 0.60f), new Vector2(0.5f, 0.60f), Vector2.zero, DesertTheme.FontSizeCaption);
-            body.text = "Revive to keep your progress, or give up and return to the hub.";
-            body.GetComponent<RectTransform>().sizeDelta = new Vector2(560, 72);
-            body.color = DesertTheme.TextPrimary;
+            var caps = Label("Caption", row.transform, new Vector2(0, 0.55f), new Vector2(1, 1f), Vector2.zero, DesertTheme.FontSizeCaption, TextAlignmentOptions.Left);
+            caps.text = caption;
+            caps.color = DesertTheme.TextSecondary;
+            caps.GetComponent<RectTransform>().offsetMin = new Vector2(2, 0);
 
-            var giveUp = ButtonGo("Give Up", _revivePanel.transform, new Vector2(-130, -70), () =>
-            {
-                _revivePanel.SetActive(false);
-                _lastFightWasLoss = false;
-                EndRun();
-            }, panelButtonSprite);
-            giveUp.GetComponent<Image>().color = DesertTheme.BtnSecondary;
+            var track = Ui("Track", row.transform);
+            var trackRt = track.GetComponent<RectTransform>();
+            trackRt.anchorMin = new Vector2(0, 0f);
+            trackRt.anchorMax = new Vector2(0.78f, 0.5f);
+            trackRt.offsetMin = new Vector2(2, 2);
+            trackRt.offsetMax = new Vector2(0, -2);
+            var trackImg = track.AddComponent<Image>();
+            trackImg.color = new Color(0f, 0f, 0f, 0.45f);
+            trackImg.raycastTarget = false;
 
-            var revive = ButtonGo("Revive", _revivePanel.transform, new Vector2(130, -70), () =>
-            {
-                // Stub revive: dismiss and let the player keep merging in the same run.
-                _revivePanel.SetActive(false);
-                _lastFightWasLoss = false;
-                SetStatus("Revived! Keep merging and fight again.");
-            }, panelButtonSprite);
-            revive.GetComponent<Image>().color = DesertTheme.AccentGold;
-            revive.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            // Width is driven by anchors (see SetBarFill) rather than Image.fillAmount,
+            // which silently renders full when the Image has no sprite.
+            var fillGo = Ui("Fill", track.transform);
+            var fillRt = fillGo.GetComponent<RectTransform>();
+            fillRt.anchorMin = new Vector2(0f, 0f);
+            fillRt.anchorMax = new Vector2(0f, 1f);
+            fillRt.pivot = new Vector2(0f, 0.5f);
+            fillRt.offsetMin = Vector2.zero;
+            fillRt.offsetMax = Vector2.zero;
+            var fill = fillGo.AddComponent<Image>();
+            fill.color = fillColor;
+            fill.raycastTarget = false;
 
-            _revivePanel.SetActive(false);
+            var value = Label("Value", row.transform, new Vector2(0.80f, 0f), new Vector2(1f, 0.5f), Vector2.zero, DesertTheme.FontSizeBody, TextAlignmentOptions.Right);
+            value.text = "0";
+            value.color = fillColor;
+            return (fill, value);
         }
 
-        private void ShowRevivePrompt()
+        // Drives a power-bar fill width (0..1) via anchors so it renders without a sprite.
+        private static void SetBarFill(Image fill, float fraction)
         {
-            if (_revivePanel == null) { EndRun(); return; }
-            _revivePanel.transform.SetAsLastSibling();
-            _revivePanel.SetActive(true);
+            if (fill == null) return;
+            var rt = fill.rectTransform;
+            rt.anchorMax = new Vector2(Mathf.Clamp01(fraction), 1f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
 
         private void BuildMeta(Transform parent)
@@ -735,19 +854,48 @@ namespace MergeSurvivor.UI
             r.anchorMin = new Vector2(0.06f, 0.15f);
             r.anchorMax = new Vector2(0.94f, 0.85f);
             r.offsetMin = r.offsetMax = Vector2.zero;
-            var metaTitle = Label("MetaTitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -24), DesertTheme.FontSizeTitle);
+            var metaTitle = Label("MetaTitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -40), DesertTheme.FontSizeTitle);
             metaTitle.text = "Merchant Tent";
             metaTitle.color = DesertTheme.AccentGold;
-            var metaSubtitle = Label("MetaSubtitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -54), DesertTheme.FontSizeCaption);
+            metaTitle.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 64);
+            var metaSubtitle = Label("MetaSubtitle", _metaPanel.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -96), DesertTheme.FontSizeCaption);
             metaSubtitle.text = "Upgrade your caravan for the journey ahead";
             metaSubtitle.color = DesertTheme.TextSecondary;
-            Button("Upgrade Spawn Capacity", _metaPanel.transform, new Vector2(0, 24), UpgradeSpawn, panelButtonSprite);
-            Button("Upgrade Starting Chance", _metaPanel.transform, new Vector2(0, -30), UpgradeChance, panelButtonSprite);
-            Button("Unlock Next Board", _metaPanel.transform, new Vector2(0, -84), UnlockNextBoard, panelButtonSprite);
-            Button("Caravan Routes", _metaPanel.transform, new Vector2(0, -138), () => { CloseMeta(); OpenBoardSelect(); }, panelButtonSprite);
-            var returnBtn = ButtonGo("Return", _metaPanel.transform, new Vector2(0, -192), CloseMeta, panelButtonSprite);
+
+            // Vertical stack so upgrade buttons never overlap and fill the panel width.
+            var metaList = Ui("MetaList", _metaPanel.transform);
+            var mlRt = metaList.GetComponent<RectTransform>();
+            mlRt.anchorMin = new Vector2(0.08f, 0.05f);
+            mlRt.anchorMax = new Vector2(0.92f, 0.80f);
+            mlRt.offsetMin = mlRt.offsetMax = Vector2.zero;
+            var mlLayout = metaList.AddComponent<VerticalLayoutGroup>();
+            mlLayout.spacing = 18;
+            mlLayout.childAlignment = TextAnchor.MiddleCenter;
+            mlLayout.childControlWidth = true;
+            mlLayout.childControlHeight = true;
+            mlLayout.childForceExpandWidth = true;
+            mlLayout.childForceExpandHeight = false;
+
+            MetaButton(metaList.transform, "Upgrade Spawn Capacity", UpgradeSpawn);
+            MetaButton(metaList.transform, "Upgrade Starting Chance", UpgradeChance);
+            MetaButton(metaList.transform, "Unlock Next Board", UnlockNextBoard);
+            var prestigeBtn = MetaButton(metaList.transform, "Prestige (Rebirth)", OpenPrestige);
+            prestigeBtn.GetComponent<Image>().color = DesertTheme.AccentGold;
+            prestigeBtn.GetComponentInChildren<TMP_Text>().color = DesertTheme.BgPrimary;
+            MetaButton(metaList.transform, "Caravan Routes", () => { CloseMeta(); OpenBoardSelect(); });
+            var returnBtn = MetaButton(metaList.transform, "Return", CloseMeta);
             returnBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
             _metaPanel.SetActive(false);
+        }
+
+        // A full-width button sized for a vertical layout list (Merchant Tent).
+        private GameObject MetaButton(Transform parent, string title, UnityEngine.Events.UnityAction click)
+        {
+            var b = ButtonGo(title, parent, Vector2.zero, click, panelButtonSprite);
+            var le = b.AddComponent<LayoutElement>();
+            le.minHeight = DesertTheme.ButtonHeight + 8f;
+            le.preferredHeight = DesertTheme.ButtonHeight + 8f;
+            return b;
         }
 
         private void BuildBoardSelectPanel(Transform parent)
@@ -860,7 +1008,12 @@ namespace MergeSurvivor.UI
                 }
             }
 
-            Button("Close", _boardSelectPanel.transform, new Vector2(0, -30), () => { _boardSelectPanel.SetActive(false); RefreshAll(); }, panelButtonSprite);
+            var closeBtn = ButtonGo("Close", _boardSelectPanel.transform, Vector2.zero, () => { _boardSelectPanel.SetActive(false); RefreshAll(); }, panelButtonSprite);
+            var closeRt = closeBtn.GetComponent<RectTransform>();
+            closeRt.anchorMin = closeRt.anchorMax = new Vector2(0.5f, 0.045f);
+            closeRt.sizeDelta = new Vector2(320, 72);
+            closeRt.anchoredPosition = Vector2.zero;
+            closeBtn.GetComponent<Image>().color = DesertTheme.BtnSecondary;
             _boardSelectPanel.SetActive(false);
         }
 
@@ -918,17 +1071,23 @@ namespace MergeSurvivor.UI
         private void StartRunInternal()
         {
             _session.ResetRun();
+            _session.GrantStartingBonuses();
+            _revivesUsedThisRun = 0;
             for (var i = 0; i < 6; i++) _session.TrySpawn();
             _isInRun = true;
+            _audio.PlayMusic(AudioManager.MusicGameplay);
             SetStatus($"Run started: {_session.CurrentBoard?.DisplayName}. Merge & fight!");
             RefreshAll();
             RefreshRunStateUI();
+            if (!_tutorialActive && PlayerPrefs.GetInt(TutorialDoneKey, 0) == 0)
+                StartCoroutine(RunTutorial());
         }
 
         private void EndRun()
         {
             _session.ResetRun();
             _isInRun = false;
+            _audio.PlayMusic(AudioManager.MusicHub);
             SetStatus("Returned to hub. Start a new run when ready.");
             SaveAccount();
             RefreshAll();
@@ -986,9 +1145,11 @@ namespace MergeSurvivor.UI
 
         private void OnFight()
         {
-            PlayUiOneShot(sfxFightStart);
+            if (_resolvingFight) return;
+            _audio.PlaySfx(AudioManager.SfxFightStart);
             var r = _session.Fight();
             _lastFightWasLoss = !r.Won;
+            SetStatus($"Battle: {r.PlayerPower} / {r.EnemyPower} — {(r.Won ? "Victory!" : "Defeat")}");
             SaveAccount();
             RefreshAll();
             ShowFightResult(r);
@@ -996,31 +1157,98 @@ namespace MergeSurvivor.UI
 
         private void ShowFightResult(CombatResult r)
         {
-            PlayUiOneShot(r.Won ? sfxFightWin : sfxFightLoss);
-            _fightResultTitle.text = r.Won ? "Victory!" : "Defeat";
-            _fightResultTitle.color = r.Won ? DesertTheme.TextVictory : DesertTheme.TextDefeat;
-            _fightResultSubtitle.text = $"<color=#E5BA42>{r.PlayerPower}</color>  vs  <color=#C44030>{r.EnemyPower}</color>";
-            _fightResultSubtitle.color = DesertTheme.TextPrimary;
-            if (r.Won && _combatConfig != null)
-                _fightResultRewards.text = $"+{_combatConfig.WinSoft} <color=#E5BA42>\u2726</color>  +{_combatConfig.WinResource} <color=#D9A050>\u2B22</color>";
-            else
-                _fightResultRewards.text = r.Won ? "+rewards" : "Merge more pieces, then Fight again.";
-            _fightResultRewards.color = r.Won ? DesertTheme.AccentGold : DesertTheme.TextSecondary;
+            // Set up the static parts, then hand off to the animated resolution.
             if (_enemyPortraitImage != null)
             {
                 var portrait = GetEnemyPortraitSprite(_session.CurrentEnemyArchetype?.Id);
-                if (portrait != null)
-                {
-                    _enemyPortraitImage.sprite = portrait;
-                    _enemyPortraitImage.enabled = true;
-                }
-                else
-                {
-                    _enemyPortraitImage.sprite = null;
-                    _enemyPortraitImage.enabled = false;
-                }
+                _enemyPortraitImage.sprite = portrait;
+                _enemyPortraitImage.enabled = portrait != null;
             }
+            StartCoroutine(AnimateFightResolution(r));
+        }
+
+        // 2.5s suspenseful power-race: bars + numbers count up, brief clash, then the verdict.
+        private IEnumerator AnimateFightResolution(CombatResult r)
+        {
+            _resolvingFight = true;
+            var playerPower = Mathf.Max(0, r.PlayerPower);
+            var enemyPower = Mathf.Max(0, r.EnemyPower);
+            var maxPower = Mathf.Max(1, Mathf.Max(playerPower, enemyPower));
+
+            // Reset to a neutral "battle starting" state.
+            _fightResultTitle.text = "Battle!";
+            _fightResultTitle.color = DesertTheme.AccentGold;
+            _fightResultTitle.rectTransform.localScale = Vector3.one;
+            _fightResultSubtitle.text = "The clash begins\u2026";
+            _fightResultSubtitle.color = DesertTheme.TextSecondary;
+            _fightResultRewards.text = string.Empty;
+            SetBarFill(_playerBarFill, 0f);
+            SetBarFill(_enemyBarFill, 0f);
+            if (_playerPowerLabel != null) _playerPowerLabel.text = "0";
+            if (_enemyPowerLabel != null) _enemyPowerLabel.text = "0";
+            if (_fightContinueButton != null) _fightContinueButton.SetActive(false);
+            HideFightResultActions();
             _fightResultPanel.SetActive(true);
+
+            yield return new WaitForSecondsRealtime(0.25f);
+
+            // Count-up race (eased), bars normalized to the stronger side.
+            const float raceTime = 1.4f;
+            var elapsed = 0f;
+            while (elapsed < raceTime)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                var t = Mathf.Clamp01(elapsed / raceTime);
+                var e = 1f - Mathf.Pow(1f - t, 3f); // easeOutCubic
+                SetBarFill(_playerBarFill, (playerPower / (float)maxPower) * e);
+                SetBarFill(_enemyBarFill, (enemyPower / (float)maxPower) * e);
+                if (_playerPowerLabel != null) _playerPowerLabel.text = Mathf.RoundToInt(playerPower * e).ToString();
+                if (_enemyPowerLabel != null) _enemyPowerLabel.text = Mathf.RoundToInt(enemyPower * e).ToString();
+                yield return null;
+            }
+            if (_playerPowerLabel != null) _playerPowerLabel.text = playerPower.ToString();
+            if (_enemyPowerLabel != null) _enemyPowerLabel.text = enemyPower.ToString();
+            SetBarFill(_playerBarFill, playerPower / (float)maxPower);
+            SetBarFill(_enemyBarFill, enemyPower / (float)maxPower);
+
+            // Suspense beat with a flash on the winning bar.
+            var winnerBar = r.Won ? _playerBarFill : _enemyBarFill;
+            var winnerColor = r.Won ? DesertTheme.AccentGold : DesertTheme.BtnDanger;
+            for (var f = 0; f < 3; f++)
+            {
+                if (winnerBar != null) winnerBar.color = Color.white;
+                yield return new WaitForSecondsRealtime(0.08f);
+                if (winnerBar != null) winnerBar.color = winnerColor;
+                yield return new WaitForSecondsRealtime(0.08f);
+            }
+
+            // Verdict: title pop + color, rewards, audio, continue button.
+            _audio.PlaySfx(r.Won ? AudioManager.SfxWin : AudioManager.SfxLoss, r.Won ? sfxFightWin : sfxFightLoss);
+            _fightResultTitle.text = r.Won ? "Victory!" : "Defeat";
+            _fightResultTitle.color = r.Won ? DesertTheme.TextVictory : DesertTheme.TextDefeat;
+            _fightResultSubtitle.text = r.Won ? "Your caravan prevails!" : "The wave overwhelms you\u2026";
+            _fightResultSubtitle.color = DesertTheme.TextPrimary;
+            if (r.Won && _combatConfig != null)
+                _fightResultRewards.text = $"<color=#E5BA42>+{_combatConfig.WinSoft} Gold</color>    <color=#D9A050>+{_combatConfig.WinResource} Resource</color>";
+            else
+                _fightResultRewards.text = r.Won ? "Rewards earned!" : "Merge more gems, then Fight again.";
+            _fightResultRewards.color = r.Won ? DesertTheme.AccentGold : DesertTheme.TextSecondary;
+
+            // Title bounce.
+            var pop = 0f;
+            const float popTime = 0.3f;
+            while (pop < popTime)
+            {
+                pop += Time.unscaledDeltaTime;
+                var s = 1f + 0.35f * (1f - Mathf.Clamp01(pop / popTime));
+                _fightResultTitle.rectTransform.localScale = new Vector3(s, s, 1f);
+                yield return null;
+            }
+            _fightResultTitle.rectTransform.localScale = Vector3.one;
+
+            if (_fightContinueButton != null) _fightContinueButton.SetActive(true);
+            ConfigureFightResultActions(r.Won);
+            _resolvingFight = false;
         }
 
         private Sprite GetEnemyPortraitSprite(string archetypeId)
@@ -1123,6 +1351,7 @@ namespace MergeSurvivor.UI
         {
             if (_session.Board.IsEmpty(x, y)) return;
             _selected = (x, y);
+            _audio.PlaySfx(AudioManager.SfxPickup);
         }
 
         private void TapCell(int x, int y)
@@ -1131,6 +1360,7 @@ namespace MergeSurvivor.UI
             {
                 if (_session.Board.IsEmpty(x, y)) return;
                 _selected = (x, y);
+                _audio.PlaySfx(AudioManager.SfxPickup);
                 return;
             }
             DropOn(x, y);
@@ -1153,7 +1383,7 @@ namespace MergeSurvivor.UI
 
         private IEnumerator PlayMergeFeedback(int x, int y)
         {
-            PlayUiOneShot(sfxMerge);
+            _audio.PlaySfx(AudioManager.SfxMerge, sfxMerge);
             var cv = _cells.Find(c => c.X == x && c.Y == y);
             if (cv == null) yield break;
             yield return cv.PlayMergeHighlight();
@@ -1166,14 +1396,15 @@ namespace MergeSurvivor.UI
                 var id = _session.Board.Get(c.X, c.Y);
                 if (string.IsNullOrEmpty(id))
                 {
-                    c.Set("-");
+                    c.Set("");
                     c.SetPiece(null);
                 }
                 else
                 {
                     var d = _items.GetById(id);
                     var tier = d?.Tier ?? 1;
-                    c.Set(d == null ? id : $"{d.DisplayName}\nT{tier}");
+                    // Gem colour already reads the type; a single tier badge keeps the board uncluttered.
+                    c.Set(d == null ? id : $"T{tier}");
                     c.SetPiece(tier, id);
                 }
             }
@@ -1183,17 +1414,27 @@ namespace MergeSurvivor.UI
             _premiumLabel.text = _inventory.Get(CurrencyType.Premium).ToString();
             _resourceLabel.text = _inventory.Get(CurrencyType.ProgressionResource).ToString();
             _hud.text = $"Wave {_session.CurrentWave}  |  Soft {_inventory.Get(CurrencyType.Soft)}  Premium {_inventory.Get(CurrencyType.Premium)}  Resource {_inventory.Get(CurrencyType.ProgressionResource)}";
-            if (_boardBackgroundImage != null && boardBackgroundCatalog != null)
+            if (boardBackgroundCatalog != null)
             {
                 var bgSprite = boardBackgroundCatalog.GetBackground(_session.CurrentBoardIndex);
-                if (bgSprite != null) { _boardBackgroundImage.sprite = bgSprite; _boardBackgroundImage.color = Color.white; }
-                else { _boardBackgroundImage.sprite = null; _boardBackgroundImage.color = DesertTheme.BgSecondary; }
+                if (_boardBackgroundImage != null)
+                {
+                    if (bgSprite != null) { _boardBackgroundImage.sprite = bgSprite; _boardBackgroundImage.color = new Color(0.5f, 0.48f, 0.5f, 1f); }
+                    else { _boardBackgroundImage.sprite = null; _boardBackgroundImage.color = DesertTheme.BgSecondary; }
+                }
+                // Same art, heavily dimmed, fills the whole screen behind the board.
+                if (_backdropImage != null)
+                {
+                    if (bgSprite != null) { _backdropImage.sprite = bgSprite; _backdropImage.color = new Color(0.28f, 0.26f, 0.30f, 1f); }
+                    else { _backdropImage.sprite = null; _backdropImage.color = DesertTheme.BgPrimary; }
+                }
             }
             var currentBoard = _session.CurrentBoard;
             _boardHud.text = currentBoard == null
                 ? "No board configured."
                 : $"Board {(_session.CurrentBoardIndex + 1)}/{_session.UnlockedBoardCount}: {currentBoard.DisplayName} ({_session.CurrentEnemyArchetype?.DisplayName ?? "No Archetype"})";
             RefreshRunStateUI();
+            RefreshMonetizationUI();
         }
 
         private void SaveAccount()
@@ -1249,19 +1490,57 @@ namespace MergeSurvivor.UI
 
         private static void EnsureFallbackCamera()
         {
-            if (Camera.main != null || FindFirstObjectByType<Camera>() != null)
+            var cam = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
+            if (cam == null)
             {
-                return;
+                var camGo = new GameObject("Main Camera");
+                camGo.tag = "MainCamera";
+                cam = camGo.AddComponent<Camera>();
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = DesertTheme.CameraBg;
+                cam.orthographic = true;
+                cam.orthographicSize = 5f;
+                camGo.transform.position = new Vector3(0f, 0f, -10f);
             }
 
-            var camGo = new GameObject("Main Camera");
-            camGo.tag = "MainCamera";
-            var cam = camGo.AddComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = DesertTheme.CameraBg;
-            cam.orthographic = true;
-            cam.orthographicSize = 5f;
-            camGo.transform.position = new Vector3(0f, 0f, -10f);
+            // Enable HDR + post-processing so the global Volume (bloom, vignette,
+            // grading) actually renders — this is what gives the gems their glow.
+            cam.allowHDR = true;
+            var camData = cam.GetUniversalAdditionalCameraData();
+            if (camData != null) camData.renderPostProcessing = true;
+        }
+
+        // Builds a global post-processing Volume at runtime (the scene has none).
+        // Bloom makes bright gems / gold / the diamond tier glow; a soft vignette
+        // and warm grade pull the flat UI toward the polished app-icon look.
+        private static void EnsurePostFx()
+        {
+            if (FindFirstObjectByType<Volume>() != null) return;
+
+            var go = new GameObject("Global Volume");
+            var vol = go.AddComponent<Volume>();
+            vol.isGlobal = true;
+            vol.priority = 10f;
+
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            vol.sharedProfile = profile;
+
+            var bloom = profile.Add<Bloom>();
+            bloom.threshold.Override(0.8f);
+            bloom.intensity.Override(0.95f);
+            bloom.scatter.Override(0.72f);
+            bloom.tint.Override(new Color(1f, 0.96f, 0.86f));
+
+            var vignette = profile.Add<Vignette>();
+            vignette.color.Override(new Color(0.04f, 0.02f, 0.01f));
+            vignette.intensity.Override(0.33f);
+            vignette.smoothness.Override(0.45f);
+
+            var grade = profile.Add<ColorAdjustments>();
+            grade.postExposure.Override(0.1f);
+            grade.contrast.Override(12f);
+            grade.saturation.Override(14f);
+            grade.colorFilter.Override(new Color(1f, 0.97f, 0.92f));
         }
 
         private static Canvas EnsureCanvas()
@@ -1312,6 +1591,23 @@ namespace MergeSurvivor.UI
             r.offsetMax = Vector2.zero;
         }
 
+        // A horizontal row of equal-width buttons for the bottom action bar.
+        private static GameObject ButtonRow(string name, Transform parent)
+        {
+            var go = Ui(name, parent);
+            var h = go.AddComponent<HorizontalLayoutGroup>();
+            h.spacing = 16;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
+            h.childForceExpandWidth = true;
+            h.childForceExpandHeight = true;
+            var le = go.AddComponent<LayoutElement>();
+            le.minHeight = DesertTheme.ButtonHeight;
+            le.preferredHeight = DesertTheme.ButtonHeight;
+            return go;
+        }
+
         private static TMP_Text Label(string name, Transform parent, Vector2 amin, Vector2 amax, Vector2 apos, float size, TextAlignmentOptions align = TextAlignmentOptions.Center)
         {
             var go = Ui(name, parent);
@@ -1319,9 +1615,7 @@ namespace MergeSurvivor.UI
             r.anchorMin = amin;
             r.anchorMax = amax;
             r.anchoredPosition = apos;
-            // Point-anchored labels (amin==amax, e.g. panel titles) need an explicit width:
-            // a zero-width rect combined with Ellipsis overflow clips the text to nothing.
-            // Stretched labels keep width 0 so they fill the parent's width.
+            // Point-anchored labels need an explicit width; Ellipsis on zero-width clips to nothing.
             var pointAnchored = Mathf.Approximately(amin.x, amax.x);
             r.sizeDelta = new Vector2(pointAnchored ? 760f : 0f, Mathf.Max(28f, size + 12f));
             var t = go.AddComponent<TextMeshProUGUI>();
@@ -1363,9 +1657,12 @@ namespace MergeSurvivor.UI
             colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.6f);
             b.colors = colors;
             b.onClick.AddListener(click);
-            var label = Label("Text", go.transform, Vector2.zero, Vector2.one, Vector2.zero, DesertTheme.FontSizeCaption);
+            var label = Label("Text", go.transform, Vector2.zero, Vector2.one, Vector2.zero, DesertTheme.FontSizeBody);
             label.text = title;
             label.alignment = TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 14;
+            label.fontSizeMax = DesertTheme.FontSizeBody;
             return go;
         }
     }
@@ -1433,9 +1730,24 @@ namespace MergeSurvivor.UI
             if (_pieceImage == null || _pieceRect == null) yield break;
             if (_mergeVfxPrefab != null)
             {
-                // A world-space ParticleSystem does not map to screen-space UI coordinates
-                // (it rendered off-cell). Use a UI sparkle burst centered on this cell instead.
-                SpawnMergeBurst();
+                var vfx = Instantiate(_mergeVfxPrefab, transform);
+                vfx.transform.localPosition = Vector3.zero;
+                vfx.transform.localScale = Vector3.one * 45f;
+                var ps = vfx.GetComponent<ParticleSystem>();
+                if (ps != null)
+                {
+                    var main = ps.main;
+                    main.playOnAwake = false;
+                    var psr = vfx.GetComponent<ParticleSystemRenderer>();
+                    if (psr != null) psr.sortingOrder = 32000;
+                    ps.Clear();
+                    ps.Play();
+                    var startLt = main.startLifetime;
+                    var maxLife = Mathf.Max(startLt.constantMax, startLt.constant, startLt.constantMin);
+                    if (maxLife <= 0f) maxLife = 0.5f;
+                    Destroy(vfx, main.duration + maxLife + 0.2f);
+                }
+                else Destroy(vfx, 1f);
             }
             var origColor = _pieceImage.color;
             var origScale = _pieceRect.localScale;
@@ -1476,50 +1788,6 @@ namespace MergeSurvivor.UI
             const float c1 = 1.70158f;
             const float c3 = c1 + 1f;
             return 1f + c3 * Mathf.Pow(t - 1f, 3f) + c1 * Mathf.Pow(t - 1f, 2f);
-        }
-
-        // UI sparkle burst centered on this cell — positions correctly in any canvas mode.
-        private void SpawnMergeBurst()
-        {
-            const int count = 8;
-            for (var i = 0; i < count; i++)
-            {
-                var go = new GameObject("MergeSpark", typeof(RectTransform));
-                go.transform.SetParent(transform, false);
-                var img = go.AddComponent<Image>();
-                img.color = (i % 2 == 0) ? DesertTheme.AccentGold : new Color(1f, 0.95f, 0.8f, 1f);
-                img.raycastTarget = false;
-                var rt = go.GetComponent<RectTransform>();
-                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = Vector2.zero;
-                rt.sizeDelta = new Vector2(16f, 16f);
-                rt.localRotation = Quaternion.Euler(0f, 0f, 45f);
-                var ang = (360f / count) * i * Mathf.Deg2Rad;
-                var dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
-                StartCoroutine(AnimateSpark(rt, img, dir));
-            }
-        }
-
-        private static IEnumerator AnimateSpark(RectTransform rt, Image img, Vector2 dir)
-        {
-            const float dur = 0.42f;
-            const float dist = 72f;
-            var baseColor = img.color;
-            var e = 0f;
-            while (e < dur && rt != null)
-            {
-                // Frame-based step (with a deltaTime floor) so the burst always completes and
-                // self-destroys in a bounded number of frames, even when deltaTime is ~0.
-                e += Mathf.Max(Time.deltaTime, dur / 18f);
-                var t = Mathf.Clamp01(e / dur);
-                var outT = 1f - (1f - t) * (1f - t); // ease-out quad
-                rt.anchoredPosition = dir * (dist * outT);
-                rt.localScale = Vector3.one * Mathf.Lerp(1.25f, 0.15f, t);
-                var c = baseColor; c.a = 1f - t; img.color = c;
-                yield return null;
-            }
-            if (rt != null) Destroy(rt.gameObject);
         }
     }
 }
