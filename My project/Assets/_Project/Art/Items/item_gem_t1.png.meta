@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 7c5e1a9b2d4f3e6081a2b3c4d5e6f706
+guid: 94d90f96e3ba3bc499f0d6689d1f180f
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4662884716664845062
-    second: item_crystal_t6_0
+      213: 8953567427975920128
+    second: item_gem_t1_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: item_crystal_t6_0
+      name: item_gem_t1_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 3
         y: 0
-        width: 256
-        height: 256
+        width: 250
+        height: 248
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: fe2f76dd1f4e5b060800000000000000
-      internalID: 4662884716664845062
+      spriteID: 00a33014326714c70800000000000000
+      internalID: 8953567427975920128
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee740800000000000000
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      item_crystal_t6_0: 4662884716664845062
+      item_gem_t1_0: 8953567427975920128
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

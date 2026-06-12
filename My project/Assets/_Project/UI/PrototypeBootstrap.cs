@@ -139,14 +139,13 @@ namespace MergeSurvivor.UI
             if (_items == null)
             {
                 _items = ScriptableObject.CreateInstance<ItemDatabase>();
-                // Gem tiers: names match the crystal art and the "merge crystals" fiction,
-                // and read by colour (green->blue->purple->gold->red->white).
-                var i1 = ScriptableObject.CreateInstance<ItemDefinition>(); i1.ConfigureRuntime("pawn_t1", "Emerald", "pawn", 1, 5);
-                var i2 = ScriptableObject.CreateInstance<ItemDefinition>(); i2.ConfigureRuntime("pawn_t2", "Sapphire", "pawn", 2, 12);
-                var i3 = ScriptableObject.CreateInstance<ItemDefinition>(); i3.ConfigureRuntime("pawn_t3", "Amethyst", "pawn", 3, 24);
-                var i4 = ScriptableObject.CreateInstance<ItemDefinition>(); i4.ConfigureRuntime("pawn_t4", "Topaz", "pawn", 4, 45);
-                var i5 = ScriptableObject.CreateInstance<ItemDefinition>(); i5.ConfigureRuntime("pawn_t5", "Ruby", "pawn", 5, 85);
-                var i6 = ScriptableObject.CreateInstance<ItemDefinition>(); i6.ConfigureRuntime("pawn_t6", "Diamond", "pawn", 6, 160);
+                // 6 gem tiers (family "pawn" preserves save/merge-chain compatibility).
+                var i1 = ScriptableObject.CreateInstance<ItemDefinition>(); i1.ConfigureRuntime("pawn_t1", "Quartz", "pawn", 1, 5);
+                var i2 = ScriptableObject.CreateInstance<ItemDefinition>(); i2.ConfigureRuntime("pawn_t2", "Amber", "pawn", 2, 12);
+                var i3 = ScriptableObject.CreateInstance<ItemDefinition>(); i3.ConfigureRuntime("pawn_t3", "Turquoise", "pawn", 3, 24);
+                var i4 = ScriptableObject.CreateInstance<ItemDefinition>(); i4.ConfigureRuntime("pawn_t4", "Amethyst", "pawn", 4, 45);
+                var i5 = ScriptableObject.CreateInstance<ItemDefinition>(); i5.ConfigureRuntime("pawn_t5", "Emerald", "pawn", 5, 80);
+                var i6 = ScriptableObject.CreateInstance<ItemDefinition>(); i6.ConfigureRuntime("pawn_t6", "Sunstone", "pawn", 6, 140);
                 _items.ConfigureRuntime(new List<ItemDefinition> { i1, i2, i3, i4, i5, i6 });
             }
             else
@@ -255,7 +254,10 @@ namespace MergeSurvivor.UI
             EnsureEventSystem();
             var canvas = EnsureCanvas();
             var root = Ui("Root", canvas.transform);
-            Stretch(root.GetComponent<RectTransform>());
+            var rootRt = root.GetComponent<RectTransform>();
+            Stretch(rootRt);
+            // Keep all content inside the device safe area (no-op when no notch insets).
+            ApplySafeArea(rootRt);
 
             // Full-screen themed backdrop so empty areas read as desert atmosphere, not black.
             var backdrop = Ui("Backdrop", root.transform);
@@ -1572,6 +1574,23 @@ namespace MergeSurvivor.UI
             r.offsetMax = Vector2.zero;
         }
 
+        // Insets a full-screen RectTransform to Screen.safeArea so content avoids notches/system bars.
+        private static void ApplySafeArea(RectTransform r)
+        {
+            var sw = Screen.width;
+            var sh = Screen.height;
+            if (sw <= 0 || sh <= 0) return;
+            var sa = Screen.safeArea;
+            var min = sa.position;
+            var max = sa.position + sa.size;
+            min.x /= sw; min.y /= sh;
+            max.x /= sw; max.y /= sh;
+            r.anchorMin = min;
+            r.anchorMax = max;
+            r.offsetMin = Vector2.zero;
+            r.offsetMax = Vector2.zero;
+        }
+
         // A horizontal row of equal-width buttons for the bottom action bar.
         private static GameObject ButtonRow(string name, Transform parent)
         {
@@ -1596,7 +1615,9 @@ namespace MergeSurvivor.UI
             r.anchorMin = amin;
             r.anchorMax = amax;
             r.anchoredPosition = apos;
-            r.sizeDelta = new Vector2(0, 44);
+            // Point-anchored labels need an explicit width; Ellipsis on zero-width clips to nothing.
+            var pointAnchored = Mathf.Approximately(amin.x, amax.x);
+            r.sizeDelta = new Vector2(pointAnchored ? 760f : 0f, Mathf.Max(28f, size + 12f));
             var t = go.AddComponent<TextMeshProUGUI>();
             t.fontSize = size;
             t.alignment = align;

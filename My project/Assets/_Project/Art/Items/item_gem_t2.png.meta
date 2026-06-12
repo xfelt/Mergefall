@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 7c5e1a9b2d4f3e6081a2b3c4d5e6f705
+guid: 4a624e9b10c61234c8f8cb68724f9f1d
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4662884716664845051
-    second: item_crystal_t5_0
+      213: -5287988153133249733
+    second: item_gem_t2_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: item_crystal_t5_0
+      name: item_gem_t2_0
       rect:
         serializedVersion: 2
         x: 0
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: fe2f76dd1f4e5b050800000000000000
-      internalID: 4662884716664845051
+      spriteID: b3bc40caaca4d96b0800000000000000
+      internalID: -5287988153133249733
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee730800000000000000
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      item_crystal_t5_0: 4662884716664845051
+      item_gem_t2_0: -5287988153133249733
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

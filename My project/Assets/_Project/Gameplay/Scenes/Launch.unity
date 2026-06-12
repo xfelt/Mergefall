@@ -159,6 +159,11 @@ MonoBehaviour:
   enemyPortraitShield: {fileID: 4263489261941456917, guid: 7e0ed3960ecfd8b458fba0deb14b23a5, type: 3}
   enemyPortraitBerserk: {fileID: 6071807438270461448, guid: 344d8c61286abd249bc1d9cc6245c775, type: 3}
   mergeVfxPrefab: {fileID: 830309854224872637, guid: ee624714925dbb34ab34cc6604686ccd, type: 3}
+  sfxMerge: {fileID: 8300000, guid: 39e6d3e2151fad54e8da2b9dea4b9ef4, type: 3}
+  sfxFightWin: {fileID: 8300000, guid: 8822cc2457ce81447b52815f5104a3ea, type: 3}
+  sfxFightLoss: {fileID: 8300000, guid: a38ba914c9b22c343b1da9389c67fa06, type: 3}
+  sfxFightStart: {fileID: 8300000, guid: 6a994f161ae6f7b4591d67ff3a74d9c8, type: 3}
+  musicLoop: {fileID: 8300000, guid: f91c167da9a21b443a384acce484d216, type: 3}
 --- !u!4 &210626741
 Transform:
   m_ObjectHideFlags: 0
