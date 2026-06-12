@@ -70,7 +70,8 @@ Release pipeline status:
 - [x] Package id (`com.xfeltech.mergefall`), version `1.0.0` / code 1, IL2CPP + ARM64 set in Player Settings
 - [x] CI workflow builds the `.aab` (`.github/workflows/android-release.yml`); versionCode auto-increments per run
 - [x] Privacy policy + Data safety answers authored (repo root)
-- [ ] Add keystore + Unity license as GitHub Actions secrets (see workflow header)
+- [x] Add keystore + Unity credentials as GitHub Actions secrets (see workflow header)
+- [ ] Remove the `UNITY_LICENSE` repo secret if present — Personal licenses must use email/password only (a `.ulf` file causes `serial invalid` in CI)
 - [ ] Host `PRIVACY_POLICY.md` at a public URL and link it in Play Console
 - [ ] Add `google-services.json` for Firebase setup (only when enabling `MERGE_SURVIVOR_USE_FIREBASE`)
 - [ ] Replace AdMob test ad unit IDs in `AppPlatformConfig.asset` with production IDs (only when enabling `MERGE_SURVIVOR_USE_ADMOB`)

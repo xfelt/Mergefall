@@ -1,9 +1,17 @@
 # Builds the Google Play release artifact (.aab) and runs the Unity test suites.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
-#   UNITY_LICENSE          — contents of your Unity .ulf license file (or use UNITY_EMAIL/PASSWORD/SERIAL for Pro)
-#   UNITY_EMAIL            — Unity account email (personal license activation)
-#   UNITY_PASSWORD         — Unity account password
+#
+# Unity Personal (free) license — use ONLY these three; do NOT set UNITY_LICENSE or UNITY_SERIAL:
+#   UNITY_EMAIL            — Unity account email
+#   UNITY_PASSWORD           — Unity account password
+#
+# Unity Plus/Pro license — use these instead (do NOT set UNITY_LICENSE):
+#   UNITY_EMAIL            — Unity account email
+#   UNITY_PASSWORD           — Unity account password
+#   UNITY_SERIAL             — serial from Unity Hub → Manage License (XX-XXXX-…)
+#
+# Android signing:
 #   ANDROID_KEYSTORE_BASE64 — upload keystore, base64-encoded (`base64 -w0 upload.keystore`)
 #   ANDROID_KEYSTORE_PASS   — keystore password
 #   ANDROID_KEYALIAS_NAME   — key alias
@@ -40,14 +48,15 @@ jobs:
       - name: Run tests
         uses: game-ci/unity-test-runner@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
           testMode: all
           artifactsPath: test-results
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -73,9 +82,9 @@ jobs:
       - name: Build .aab
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
