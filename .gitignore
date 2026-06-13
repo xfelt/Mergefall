@@ -2,3 +2,4 @@
 .cursor/
 *.keystore
 *.jks
+build/

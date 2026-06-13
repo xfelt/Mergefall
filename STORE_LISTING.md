@@ -10,8 +10,8 @@
 ## Short description (max 80 characters)
 
 **Final:**  
-`Merge units, fight waves, conquer the board. Idle merge RPG with meta progression.`  
-*(72 characters)*
+`Merge units, fight waves, conquer the board. Idle merge RPG with meta progress.`  
+*(79 characters — Play Console 80-char limit; “progression” truncated to “progress”)*
 
 **A/B test ideas (short description):**
 - `Merge. Fight. Level up the board. Idle survivor RPG with endless meta progression.` *(67)*
@@ -63,7 +63,14 @@ Merge Survivor: Board Quest is for fans of merge games, survivor-style combat, a
 
 ### Screenshots
 
-- **Phone:** 16:9 or 9:16 (e.g. 1080×1920 or 1920×1080). *[Add paths or notes for each screenshot.]*
+- **Phone (1080×1920, publish-ready):** `My project/Screenshots/store_assets/phone/`
+  - `01_build_squad.png` — board / spawn
+  - `02_merge_tiers.png` — six-tier merge ladder
+  - `03_battle.png` — fight clash
+  - `04_victory.png` — rewards
+  - `05_meta_hub.png` — caravan upgrades
+- **Raw captures (dev UI, for regeneration):** `My project/Screenshots/01_title.png` … `08_tutorial.png`
+- **Regenerate:** `python My project/Tools/generate_store_assets.py`
 - **7" tablet:** 16:9 or 9:16. *[Add when available.]*
 - **10" tablet:** 16:9 or 9:16. *[Add when available.]*
 
@@ -73,7 +80,12 @@ Merge Survivor: Board Quest is for fans of merge games, survivor-style combat, a
 
 - **Size:** 1024×500 px.  
 - **Usage:** Banner at top of store listing.  
-- **Asset path/notes:** *[e.g. `assets/store/feature_graphic_1024x500.png`]*
+- **Asset path:** `My project/Screenshots/store_assets/feature_graphic_1024x500.png`
+
+### App icon
+
+- **Play Console high-res icon (512×512):** `My project/Screenshots/store_assets/app_icon_512.png`
+- **Unity source (1024×1024):** `My project/Assets/_Project/UI/app_icon_mergefall.png`
 
 ### Privacy policy URL
 
