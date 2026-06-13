@@ -5,9 +5,9 @@
 **Contact:** aachergui1@gmail.com
 
 This privacy policy describes how the Android game **Mergefall** ("the app", package
-`com.xfeltech.mergefall`) handles your information. Host this document at a public URL
-(e.g. GitHub Pages or your website) and link that URL in Google Play Console →
-Store listing → Privacy policy.
+`com.xfeltech.mergefall`) handles your information.
+
+**Public URL:** https://xfelt.github.io/Mergefall/ (GitHub Pages, source: `docs/index.html`)
 
 ---
 

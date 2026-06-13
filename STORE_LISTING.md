@@ -77,8 +77,9 @@ Merge Survivor: Board Quest is for fans of merge games, survivor-style combat, a
 
 ### Privacy policy URL
 
-- **URL:** *[e.g. https://yoursite.com/privacy or Play Console-hosted.]*  
-- **Required for:** Apps that collect data or use certain permissions.
+- **URL:** https://xfelt.github.io/Mergefall/  
+- **Play Console:** Store listing → Privacy policy (paste the URL above).  
+- **Source:** `docs/index.html` (deployed via `.github/workflows/pages.yml` from `PRIVACY_POLICY.md`).
 
 ### Optional A/B test ideas (short description)
 
