@@ -45,7 +45,7 @@ Unity mobile prototype foundation for an Android-first hybrid-casual loop:
 ## Android / Google Play Readiness Notes
 
 Publishing documents (repo root):
-- `PRIVACY_POLICY.md` — privacy policy ready to host; link its public URL in Play Console.
+- `PRIVACY_POLICY.md` — privacy policy; live at https://xfelt.github.io/Mergefall/ (GitHub Pages)
 - `DATA_SAFETY.md` — pre-filled answers for the Play Console Data safety form, content
   rating, ads declaration, and the in-app product list to create.
 - `STORE_LISTING.md` — store title, descriptions, and feature bullets.
@@ -85,7 +85,7 @@ Release pipeline status:
 - [x] Privacy policy + Data safety answers authored (repo root)
 - [x] Add keystore + Unity credentials as GitHub Actions secrets (see workflow header)
 - [x] Set `UNITY_SERIAL` from your local `Unity_lic.ulf` (Personal license — do **not** use a `.ulf` file or the placeholder `x` in CI)
-- [ ] Host `PRIVACY_POLICY.md` at a public URL and link it in Play Console
+- [x] Host `PRIVACY_POLICY.md` at https://xfelt.github.io/Mergefall/ (link in Play Console store listing)
 - [ ] Add `google-services.json` for Firebase setup (only when enabling `MERGE_SURVIVOR_USE_FIREBASE`)
 - [ ] Replace AdMob test ad unit IDs in `AppPlatformConfig.asset` with production IDs (only when enabling `MERGE_SURVIVOR_USE_ADMOB`)
 
